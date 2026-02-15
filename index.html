@@ -312,10 +312,8 @@
             debouncedSave();
         }
 
-        // Lógica de entrada mejorada para mostrar el tick cuando hay cambios
         function handleInput(type, index, el) {
             updateItemValue(type, index, el.value);
-            // Mostrar el botón de confirmación (tick) al detectar cambios
             const tickBtn = document.getElementById(`tick-${type}-${index}`);
             if (tickBtn) tickBtn.classList.remove('hidden');
         }
@@ -335,13 +333,10 @@
                 const dateKey = AppState.sundays[AppState.activeIdx];
                 AppState.monthData[dateKey][type][index] = val;
                 
-                // Guardar inmediatamente
                 save();
                 
-                // OCULTAR EL TICK al pulsar
                 if (tickBtn) tickBtn.classList.add('hidden');
                 
-                // Feedback visual
                 inputEl.parentElement.classList.add('bg-green-50', 'border-green-300');
                 setTimeout(() => {
                     inputEl.parentElement.classList.remove('bg-green-50', 'border-green-300');
