@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Musical IEBLA</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -19,7 +16,7 @@
         .dragging { opacity: 0.5; transform: scale(0.98); }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-2 md:p-8">
+<body class="bg-slate-100 min-h-screen p-2 md:p-8 text-slate-900">
 
     <div class="max-w-4xl mx-auto bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
         
@@ -66,7 +63,7 @@
             
             <div class="flex flex-col items-center flex-1">
                 <div id="syncStatus" class="flex gap-1.5 items-center text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    <div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></div> Online
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Conectando...
                 </div>
                 <div class="flex items-baseline gap-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold">Dom</span>
@@ -81,7 +78,9 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main id="contentArea" class="p-5 md:p-12 min-h-[400px] bg-white">
-            <!-- Render dinámico -->
+            <div class="flex items-center justify-center h-full">
+                <p class="text-slate-400 animate-pulse">Cargando agenda...</p>
+            </div>
         </main>
 
         <footer class="bg-slate-50 border-t border-slate-100 p-6 text-center">
@@ -90,8 +89,24 @@
         </footer>
     </div>
 
-    <script>
-        // 1. ESTADO CENTRALIZADO
+    <!-- Firebase SDK v11 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        // Configuración unificada
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4dnDnojGL8NNMSxRJFV4eVQvKUkdoKJM",
+            authDomain: "agenda-iebla.firebaseapp.com",
+            projectId: "agenda-iebla",
+            storageBucket: "agenda-iebla.firebasestorage.app",
+            messagingSenderId: "94924538907",
+            appId: "1:94924538907:web:861e69bbf351973f7de4be",
+            measurementId: "G-4L3GNF3SY6"
+        };
+
+        // Estado de la App
         const AppState = {
             viewMode: 'view',
             currentMonth: new Date().getMonth(),
@@ -100,34 +115,32 @@
             sundays: [],
             unsubscribe: null,
             isSaving: false,
-            appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21'
+            appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
+            user: null
         };
 
         const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
         let db, auth;
 
-        // 2. INICIALIZACIÓN
+        // Inicializar Firebase
         async function init() {
-            try {
-                const firebaseConfig = JSON.parse(__firebase_config);
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.firestore();
-                auth = firebase.auth();
-                
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await auth.signInWithCustomToken(__initial_auth_token);
-                } else {
-                    await auth.signInAnonymously();
-                }
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
 
+            try {
+                // Autenticación anónima para cumplir con las reglas de seguridad
+                const cred = await signInAnonymously(auth);
+                AppState.user = cred.user;
+                
                 setupInitialState();
                 setupEventListeners();
                 setupRealtimeListener();
                 updateTodayLabel();
-            } catch (e) {
-                console.error("Error init:", e);
-                document.getElementById('contentArea').innerHTML = `<p class="text-red-500 p-4">Error al conectar con el servidor.</p>`;
+            } catch (error) {
+                console.error("Error de inicialización:", error);
+                document.getElementById('contentArea').innerHTML = `<p class="text-red-500 text-center">Error al conectar: ${error.message}</p>`;
             }
         }
 
@@ -135,12 +148,19 @@
             const hoy = new Date();
             AppState.sundays = getSundays(AppState.currentMonth);
             const hoyISO = hoy.toISOString().split('T')[0];
+            
+            // Buscar el domingo más cercano (hoy o futuro)
             AppState.activeIdx = AppState.sundays.findIndex(s => s >= hoyISO);
 
             if (AppState.activeIdx === -1) {
-                AppState.currentMonth = (AppState.currentMonth + 1) % 12;
-                AppState.sundays = getSundays(AppState.currentMonth);
-                AppState.activeIdx = 0;
+                // Si no hay domingos restantes este mes, ir al siguiente
+                if (AppState.currentMonth < 11) {
+                    AppState.currentMonth++;
+                    AppState.sundays = getSundays(AppState.currentMonth);
+                    AppState.activeIdx = 0;
+                } else {
+                    AppState.activeIdx = AppState.sundays.length - 1;
+                }
             }
             document.getElementById('monthSelect').value = AppState.currentMonth;
         }
@@ -156,7 +176,6 @@
             return found;
         }
 
-        // 3. EVENT LISTENERS
         function setupEventListeners() {
             document.getElementById('prevSunday').addEventListener('click', () => {
                 if (AppState.activeIdx > 0) { AppState.activeIdx--; render(); }
@@ -173,27 +192,28 @@
 
         function setupRealtimeListener() {
             if (AppState.unsubscribe) AppState.unsubscribe();
-            const monthKey = `2026-${AppState.currentMonth}`;
-            
-            const status = document.getElementById('syncStatus');
-            status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>';
+            if (!AppState.user) return;
 
-            AppState.unsubscribe = db.collection('artifacts').doc(AppState.appId)
-                .collection('public').doc('data')
-                .collection('months').doc(monthKey).onSnapshot(
-                    (doc) => {
-                        AppState.monthData = doc.exists() ? doc.data() : {};
-                        render();
-                        status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></div> Online';
-                    },
-                    (error) => { 
-                        console.error("Error listening:", error);
-                        status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Offline';
-                    }
-                );
+            const monthKey = `2026-${AppState.currentMonth}`;
+            const status = document.getElementById('syncStatus');
+            status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div> Sincronizando...';
+
+            // Ruta de Firestore siguiendo la Regla 1 (Public Data)
+            const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
+
+            AppState.unsubscribe = onSnapshot(docRef, 
+                (snapshot) => {
+                    AppState.monthData = snapshot.exists() ? snapshot.data() : {};
+                    render();
+                    status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></div> Online';
+                },
+                (error) => {
+                    console.error("Error en listener:", error);
+                    status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Error de red';
+                }
+            );
         }
 
-        // 4. RENDERIZADO
         function render() {
             const dateKey = AppState.sundays[AppState.activeIdx];
             if (!dateKey) {
@@ -259,50 +279,57 @@
                 <section>
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-slate-800 uppercase text-[10px] tracking-widest flex items-center gap-2">${emoji} ${title}</h3>
-                        <button onclick="addItem('${type}')" class="bg-${color}-600 text-white w-10 h-10 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 hover:bg-${color}-700">+</button>
+                        <button id="add-${type}" class="bg-${color}-600 text-white w-10 h-10 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 hover:bg-${color}-700">+</button>
                     </div>
-                    <div class="space-y-2" data-type="${type}">
-                        ${items.map((item, i) => {
-                            const dragAttrs = isDraggable ? 
-                                `draggable="true" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragend="handleDragEnd(event)"` 
-                                : '';
-                            const dragHandle = isDraggable ? 
-                                `<div class="cursor-grab text-slate-300 px-1 hover:text-slate-500">⠿</div>` 
-                                : `<div class="w-2"></div>`;
-
-                            return `
-                            <div class="flex gap-2 group items-center p-2 bg-slate-50 rounded-xl border border-slate-200 hover:border-${color}-300 transition-all focus-within:border-${color}-500 focus-within:ring-2 focus-within:ring-${color}-100" ${dragAttrs} data-index="${i}">
-                                ${dragHandle}
+                    <div class="space-y-2" id="list-${type}" data-type="${type}">
+                        ${items.map((item, i) => `
+                            <div class="flex gap-2 group items-center p-2 bg-slate-50 rounded-xl border border-slate-200" 
+                                 ${isDraggable ? `draggable="true"` : ''} 
+                                 data-index="${i}">
+                                ${isDraggable ? `<div class="cursor-grab text-slate-300 px-1 hover:text-slate-500">⠿</div>` : '<div class="w-2"></div>'}
                                 <input type="text" value="${item}" 
-                                    oninput="handleInput('${type}', ${i}, this)" 
+                                    data-idx="${i}" data-field="${type}"
                                     placeholder="Escribir..." 
-                                    id="input-${type}-${i}"
                                     class="flex-1 p-2 bg-transparent border-none outline-none text-sm font-medium focus:font-bold text-slate-700">
-                                
-                                <button id="tick-${type}-${i}" onclick="confirmItem('${type}', ${i})" class="w-8 h-8 flex items-center justify-center rounded-lg text-green-500 hover:bg-green-100 hover:text-green-700 transition-colors hidden" title="Confirmar cambio">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                </button>
-
-                                <button onclick="removeItem('${type}', ${i})" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                                <button data-del-type="${type}" data-del-idx="${i}" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
-                            </div>`;
-                        }).join('')}
+                            </div>
+                        `).join('')}
                     </div>
                 </section>`;
         }
 
-        // 5. ACCIONES
+        // Delegación de eventos para edición dinámica
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'add-musicians') addItem('musicians');
+            if (e.target.id === 'add-songs') addItem('songs');
+            
+            const delBtn = e.target.closest('[data-del-type]');
+            if (delBtn) {
+                const type = delBtn.dataset.delType;
+                const idx = parseInt(delBtn.dataset.delIdx);
+                removeItem(type, idx);
+            }
+        });
+
+        document.addEventListener('input', (e) => {
+            if (e.target.dataset.field) {
+                const type = e.target.dataset.field;
+                const idx = parseInt(e.target.dataset.idx);
+                const val = e.target.value;
+                const dateKey = AppState.sundays[AppState.activeIdx];
+                AppState.monthData[dateKey][type][idx] = val;
+                debouncedSave();
+            }
+        });
+
+        // Funciones de acción
         function addItem(type) {
             const dateKey = AppState.sundays[AppState.activeIdx];
             AppState.monthData[dateKey][type].push('');
             render();
             debouncedSave();
-            
-            setTimeout(() => {
-                const inputs = document.querySelectorAll(`[data-type="${type}"] input`);
-                if(inputs.length) inputs[inputs.length - 1].focus();
-            }, 100);
         }
 
         function removeItem(type, index) {
@@ -312,92 +339,77 @@
             debouncedSave();
         }
 
-        function handleInput(type, index, el) {
-            updateItemValue(type, index, el.value);
-            const tickBtn = document.getElementById(`tick-${type}-${index}`);
-            if (tickBtn) tickBtn.classList.remove('hidden');
-        }
-
-        function updateItemValue(type, index, value) {
-            const dateKey = AppState.sundays[AppState.activeIdx];
-            AppState.monthData[dateKey][type][index] = value;
-            debouncedSave(); 
-        }
-
-        function confirmItem(type, index) {
-            const inputEl = document.getElementById(`input-${type}-${index}`);
-            const tickBtn = document.getElementById(`tick-${type}-${index}`);
-            
-            if (inputEl) {
-                const val = inputEl.value;
-                const dateKey = AppState.sundays[AppState.activeIdx];
-                AppState.monthData[dateKey][type][index] = val;
-                
-                save();
-                
-                if (tickBtn) tickBtn.classList.add('hidden');
-                
-                inputEl.parentElement.classList.add('bg-green-50', 'border-green-300');
-                setTimeout(() => {
-                    inputEl.parentElement.classList.remove('bg-green-50', 'border-green-300');
-                }, 500);
+        // Drag and Drop Logic
+        document.addEventListener('dragstart', (e) => {
+            if (e.target.draggable) {
+                e.target.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', e.target.dataset.index);
             }
-        }
+        });
 
-        let draggedIdx = null;
-        function handleDragStart(e) {
-            draggedIdx = parseInt(e.currentTarget.dataset.index);
-            e.currentTarget.classList.add('dragging');
-        }
-        function handleDragOver(e) {
+        document.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.currentTarget.classList.add('drag-over');
-        }
-        function handleDrop(e) {
-            e.preventDefault();
-            const type = e.currentTarget.parentNode.dataset.type;
-            if(type === 'musicians') return;
+            const over = e.target.closest('[draggable]');
+            if (over) over.classList.add('drag-over');
+        });
 
-            const dropIdx = parseInt(e.currentTarget.dataset.index);
-            const dateKey = AppState.sundays[AppState.activeIdx];
+        document.addEventListener('dragleave', (e) => {
+            const over = e.target.closest('[draggable]');
+            if (over) over.classList.remove('drag-over');
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const container = e.target.closest('[data-type]');
+            const dragging = document.querySelector('.dragging');
+            const over = e.target.closest('[draggable]');
             
-            const item = AppState.monthData[dateKey][type].splice(draggedIdx, 1)[0];
-            AppState.monthData[dateKey][type].splice(dropIdx, 0, item);
-            render();
-            debouncedSave();
-        }
-        function handleDragEnd(e) {
-            document.querySelectorAll('.drag-over').forEach(i => i.classList.remove('drag-over'));
-            document.querySelectorAll('.dragging').forEach(i => i.classList.remove('dragging'));
-        }
+            if (container && dragging && over) {
+                const type = container.dataset.type;
+                if (type !== 'songs') return; // Solo canciones son ordenables
 
-        // 6. GUARDADO & UTILIDADES
+                const fromIdx = parseInt(dragging.dataset.index);
+                const toIdx = parseInt(over.dataset.index);
+                const dateKey = AppState.sundays[AppState.activeIdx];
+                
+                const items = AppState.monthData[dateKey][type];
+                const [movedItem] = items.splice(fromIdx, 1);
+                items.splice(toIdx, 0, movedItem);
+                
+                render();
+                debouncedSave();
+            }
+        });
+
+        document.addEventListener('dragend', () => {
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+
+        // Guardado persistente
         let saveTimeout;
         function debouncedSave() {
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(save, 800);
+            saveTimeout = setTimeout(save, 1500);
         }
 
         async function save() {
-            if (AppState.isSaving) return;
+            if (AppState.isSaving || !AppState.user) return;
             AppState.isSaving = true;
+            
             const status = document.getElementById('syncStatus');
-            status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></div>';
+            status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></div> Guardando...';
 
             try {
                 const monthKey = `2026-${AppState.currentMonth}`;
-                await db.collection('artifacts').doc(AppState.appId)
-                    .collection('public').doc('data')
-                    .collection('months').doc(monthKey).set(AppState.monthData);
+                const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
+                await setDoc(docRef, AppState.monthData);
                 status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></div> Online';
             } catch (error) {
-                console.error("Error saving:", error);
-                status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Error';
-            } finally { 
-                AppState.isSaving = false; 
-                setTimeout(() => {
-                     if(!AppState.isSaving) status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></div> Online';
-                }, 500);
+                console.error("Error guardando:", error);
+                status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Error al guardar';
+            } finally {
+                AppState.isSaving = false;
             }
         }
 
@@ -412,7 +424,6 @@
             AppState.sundays = getSundays(AppState.currentMonth);
             AppState.activeIdx = 0;
             AppState.monthData = {};
-            render();
             setupRealtimeListener();
         }
 
@@ -423,29 +434,51 @@
 
         async function exportPDF() {
             const { jsPDF } = await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-            const doc = new jsPDF();
+            const docPdf = new jsPDF();
             const dateKey = AppState.sundays[AppState.activeIdx];
             const data = AppState.monthData[dateKey];
             const dayNum = new Date(dateKey + "T12:00:00").getDate();
             
-            doc.setFont('helvetica', 'bold');
-            doc.text(`IEBLA - Domingo ${dayNum} de ${monthNames[AppState.currentMonth]}`, 20, 20);
+            docPdf.setFont('helvetica', 'bold');
+            docPdf.setFontSize(18);
+            docPdf.text(`IEBLA - Domingo ${dayNum} de ${monthNames[AppState.currentMonth]}`, 20, 25);
             
-            doc.setFontSize(14);
-            doc.text('EQUIPO MUSICAL:', 20, 40);
-            doc.setFont('helvetica', 'normal');
-            data.musicians.forEach((m, i) => doc.text(`- ${m}`, 25, 50 + i*8));
+            docPdf.setDrawColor(200, 200, 200);
+            docPdf.line(20, 30, 190, 30);
+
+            docPdf.setFontSize(12);
+            docPdf.text('EQUIPO MUSICAL:', 20, 45);
+            docPdf.setFont('helvetica', 'normal');
+            let y = 55;
+            if(data.musicians.length) {
+                data.musicians.forEach((m) => {
+                    docPdf.text(`• ${m}`, 25, y);
+                    y += 8;
+                });
+            } else {
+                docPdf.text('No asignado', 25, y);
+                y += 8;
+            }
             
-            const nextY = 60 + data.musicians.length * 8;
-            doc.setFont('helvetica', 'bold');
-            doc.text('CANCIONES:', 20, nextY);
-            doc.setFont('helvetica', 'normal');
-            data.songs.forEach((s, i) => doc.text(`${i+1}. ${s}`, 25, (nextY + 10) + i*8));
+            y += 10;
+            docPdf.setFont('helvetica', 'bold');
+            docPdf.text('CANCIONES:', 20, y);
+            docPdf.setFont('helvetica', 'normal');
+            y += 10;
+            if(data.songs.length) {
+                data.songs.forEach((s, i) => {
+                    docPdf.text(`${i+1}. ${s}`, 25, y);
+                    y += 8;
+                });
+            } else {
+                docPdf.text('No hay canciones', 25, y);
+            }
             
-            doc.save(`Agenda-IEBLA-${dayNum}-${AppState.currentMonth + 1}.pdf`);
+            docPdf.save(`IEBLA-${dayNum}-${AppState.currentMonth + 1}.pdf`);
         }
 
-        window.onload = init;
+        // Iniciar
+        init();
     </script>
 </body>
 </html>
