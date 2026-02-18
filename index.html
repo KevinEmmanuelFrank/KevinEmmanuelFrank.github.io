@@ -45,9 +45,9 @@
                 </select>
                 
                 <div class="flex gap-2">
-                    <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-green-900/40 hidden">
-                        PDF
-                    </button>
+               <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-green-900/40 hidden">
+    PNG
+</button>
                     <button id="toggleModeBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/40">
                         Editar
                     </button>
@@ -187,7 +187,8 @@
 
             document.getElementById('toggleModeBtn').addEventListener('click', toggleMode);
             document.getElementById('monthSelect').addEventListener('change', changeMonth);
-            document.getElementById('exportBtn').addEventListener('click', exportPDF);
+          document.getElementById('exportBtn').addEventListener('click', exportImage);
+
         }
 
         function setupRealtimeListener() {
@@ -432,50 +433,50 @@
             document.getElementById('todayLabel').innerText = "Hoy: " + hoy.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
         }
 
-        async function exportPDF() {
-            const { jsPDF } = await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-            const docPdf = new jsPDF();
-            const dateKey = AppState.sundays[AppState.activeIdx];
-            const data = AppState.monthData[dateKey];
-            const dayNum = new Date(dateKey + "T12:00:00").getDate();
-            
-            docPdf.setFont('helvetica', 'bold');
-            docPdf.setFontSize(18);
-            docPdf.text(`IEBLA - Domingo ${dayNum} de ${monthNames[AppState.currentMonth]}`, 20, 25);
-            
-            docPdf.setDrawColor(200, 200, 200);
-            docPdf.line(20, 30, 190, 30);
-
-            docPdf.setFontSize(12);
-            docPdf.text('EQUIPO MUSICAL:', 20, 45);
-            docPdf.setFont('helvetica', 'normal');
-            let y = 55;
-            if(data.musicians.length) {
-                data.musicians.forEach((m) => {
-                    docPdf.text(`• ${m}`, 25, y);
-                    y += 8;
-                });
-            } else {
-                docPdf.text('No asignado', 25, y);
-                y += 8;
-            }
-            
-            y += 10;
-            docPdf.setFont('helvetica', 'bold');
-            docPdf.text('CANCIONES:', 20, y);
-            docPdf.setFont('helvetica', 'normal');
-            y += 10;
-            if(data.songs.length) {
-                data.songs.forEach((s, i) => {
-                    docPdf.text(`${i+1}. ${s}`, 25, y);
-                    y += 8;
-                });
-            } else {
-                docPdf.text('No hay canciones', 25, y);
-            }
-            
-            docPdf.save(`IEBLA-${dayNum}-${AppState.currentMonth + 1}.pdf`);
+     async function exportImage() {
+    try {
+        // Cargar html2canvas si no está
+        if (!window.html2canvas) {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            document.head.appendChild(script);
+            await new Promise(resolve => { script.onload = resolve; });
         }
+
+        // Ocultar header/nav/footer para captura limpia
+        const header = document.querySelector('header');
+        const nav = document.querySelector('nav');
+        const footer = document.querySelector('footer');
+        const originalDisplay = { header: header.style.display, nav: nav.style.display, footer: footer.style.display };
+        header.style.display = nav.style.display = footer.style.display = 'none';
+
+        const content = document.getElementById('contentArea');
+        const canvas = await window.html2canvas(content, {
+            scale: 2,  // Alta calidad
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            width: content.scrollWidth,
+            height: content.scrollHeight
+        });
+
+        // Restaurar elementos
+        header.style.display = originalDisplay.header;
+        nav.style.display = originalDisplay.nav;
+        footer.style.display = originalDisplay.footer;
+
+        // Descargar PNG
+        const link = document.createElement('a');
+        link.download = `IEBLA-Domingo-${new Date(AppState.sundays[AppState.activeIdx]).getDate()}-${monthNames[AppState.currentMonth].substring(0,3)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        console.log('Imagen generada!');
+    } catch (error) {
+        console.error('Error imagen:', error);
+        alert('Error generando imagen. Revisa consola.');
+    }
+}
+
 
         // Iniciar
         init();
