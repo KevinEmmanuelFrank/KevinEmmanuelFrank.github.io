@@ -235,7 +235,7 @@
 
         function ensureData(dateKey) {
             if (!AppState.monthData[dateKey]) {
-                AppState.monthData[dateKey] = { musicians: [], songs: [] };
+                AppState.monthData[dateKey] = { musicians: [], songs: [], notes: ''  };
             }
         }
 
@@ -262,14 +262,22 @@
                             </ul>
                         </div>
                     </div>
+                                            <!-- 🆕 NOTAS EN VISTA NORMAL -->
+                        <div class="bg-amber-50/50 rounded-3xl p-6 border border-amber-100 mt-6">
+                            <h3 class="text-amber-800 font-black mb-4 flex items-center gap-2 text-xs uppercase tracking-widest">📝 Notas Predicador</h3>
+                            <p class="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">${data.notes || 'Sin notas'}</p>
+                        </div>
+
                 </div>`;
-            } else {
-                return `
-                <div class="fade-in space-y-8">
-                    ${editSectionHTML('Músicos', 'musicians', data.musicians, '🎸')}
-                    ${editSectionHTML('Canciones', 'songs', data.songs, '🎤')}
-                </div>`;
-            }
+           } else {
+    return `
+    <div class="fade-in space-y-8">
+        ${editSectionHTML('Músicos', 'musicians', data.musicians, '🎸')}
+        ${editSectionHTML('Canciones', 'songs', data.songs, '🎤')}
+        ${editNotesSectionHTML(data.notes || '')}  <!-- ← AGREGAR ESTA LÍNEA -->
+    </div>`;
+}
+
         }
 
         function editSectionHTML(title, type, items, emoji) {
@@ -301,6 +309,22 @@
                 </section>`;
         }
 
+        function editNotesSectionHTML(notes) {
+    return `
+        <section class="mt-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-black text-slate-800 uppercase text-[10px] tracking-widest flex items-center gap-2">📝 Notas Predicador</h3>
+            </div>
+            <div class="bg-amber-50 rounded-3xl p-6 border border-amber-100">
+                <textarea data-field="notes" data-idx="0" 
+                    placeholder="Mensaje principal, versículos clave, orden del culto..." 
+                    class="w-full p-4 bg-white rounded-xl border border-amber-100 resize-vertical min-h-[120px] text-sm font-medium focus:font-bold text-slate-700 outline-none">${notes}</textarea>
+            </div>
+        </section>
+    `;
+}
+
+
         // Delegación de eventos para edición dinámica
         document.addEventListener('click', (e) => {
             if (e.target.id === 'add-musicians') addItem('musicians');
@@ -314,16 +338,23 @@
             }
         });
 
-        document.addEventListener('input', (e) => {
-            if (e.target.dataset.field) {
-                const type = e.target.dataset.field;
-                const idx = parseInt(e.target.dataset.idx);
-                const val = e.target.value;
-                const dateKey = AppState.sundays[AppState.activeIdx];
-                AppState.monthData[dateKey][type][idx] = val;
-                debouncedSave();
-            }
-        });
+       document.addEventListener('input', (e) => {
+    if (e.target.dataset.field) {
+        const field = e.target.dataset.field;
+        const dateKey = AppState.sundays[AppState.activeIdx];
+        
+        if (field === 'notes') {
+            // Para notas (texto simple)
+            AppState.monthData[dateKey][field] = e.target.value;
+        } else {
+            // Para arrays (músicos/canciones)
+            const idx = parseInt(e.target.dataset.idx);
+            AppState.monthData[dateKey][field][idx] = e.target.value;
+        }
+        debouncedSave();
+    }
+});
+
 
         // Funciones de acción
         function addItem(type) {
