@@ -14,6 +14,7 @@
         .nav-btn { -webkit-tap-highlight-color: transparent; }
         .drag-over { border: 2px dashed #3b82f6 !important; background: #eff6ff !important; }
         .dragging { opacity: 0.5; transform: scale(0.98); }
+        .week-card-hover { transform: scale(1.02); }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-2 md:p-8 text-slate-900">
@@ -74,6 +75,15 @@
             <button id="nextSunday" class="nav-btn w-12 h-12 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400 active:text-blue-600 shrink-0">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/></svg>
             </button>
+            <button id="weekViewBtn" class="nav-btn w-12 h-12 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400 active:text-green-600 shrink-0 ml-2">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y2="2" x2="8" y2="6"></line>
+        <line x1="3" y2="10" x2="21" y2="10"></line>
+    </svg>
+</button>
+
         </nav>
 
         <!-- CONTENIDO PRINCIPAL -->
@@ -188,6 +198,8 @@
             document.getElementById('toggleModeBtn').addEventListener('click', toggleMode);
             document.getElementById('monthSelect').addEventListener('change', changeMonth);
           document.getElementById('exportBtn').addEventListener('click', exportImage);
+            document.getElementById('weekViewBtn').addEventListener('click', toggleWeekView);
+
 
         }
 
@@ -241,6 +253,10 @@
 
         function getContentHTML(data, dayNum) {
             const monthLabel = monthNames[AppState.currentMonth];
+            if (weekViewMode) {
+    return getWeekViewHTML();
+}
+
             if (AppState.viewMode === 'view') {
                 return `
                 <div class="fade-in">
@@ -508,6 +524,65 @@
     }
 }
 
+// 🆕 CALENDARIO SEMANAL - FUNCIONES FALTANTES
+let weekViewMode = false;
+
+function toggleWeekView() {
+    weekViewMode = !weekViewMode;
+    render();
+}
+
+function getWeekSundays() {
+    const baseSunday = AppState.sundays[AppState.activeIdx];
+    const baseDate = new Date(baseSunday + 'T12:00:00');
+    const weekSundays = [];
+    
+    for(let i = -1; i <= 2; i++) {
+        const nextSunday = new Date(baseDate);
+        nextSunday.setDate(baseDate.getDate() + (i * 7));
+        const isoDate = nextSunday.toISOString().split('T')[0];
+        weekSundays.push(isoDate);
+    }
+    return weekSundays;
+}
+
+function getWeekViewHTML() {
+    const weekSundays = getWeekSundays();
+    return `
+    <div class="fade-in">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-black text-slate-900 tracking-tighter mb-2">Próximos Domingos</h2>
+            <p class="text-slate-500 text-sm">${monthNames[AppState.currentMonth]}</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            ${weekSundays.map((dateKey, i) => {
+                ensureData(dateKey);
+                const data = AppState.monthData[dateKey] || { musicians: [], songs: [], notes: '' };
+                const dayNum = new Date(dateKey + 'T12:00:00').getDate();
+                const firstSong = data.songs[0] || 'Sin canciones';
+                const musicianCount = data.musicians.length;
+                
+                return `
+                <div class="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 border border-slate-200 hover:shadow-xl transition-all cursor-pointer group" onclick="AppState.activeIdx=${AppState.activeIdx+i};weekViewMode=false;render();">
+                    <div class="text-center mb-4">
+                        <h3 class="text-2xl font-black text-slate-900">${dayNum}</h3>
+                        <p class="text-xs text-slate-500 uppercase tracking-wider">Dom</p>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <p><span class="font-bold text-slate-700">Músicos:</span> ${musicianCount}</p>
+                        <p><span class="font-bold text-slate-700">1° Canción:</span> ${firstSong}</p>
+                        ${data.notes ? `<p class="text-xs text-amber-700 truncate">${data.notes.substring(0,40)}...</p>` : ''}
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <div class="text-center mt-8">
+            <button onclick="weekViewMode=false;render();" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all">
+                ← Volver Detalle
+            </button>
+        </div>
+    </div>`;
+}
 
         // Iniciar
         init();
