@@ -194,7 +194,9 @@
             document.getElementById('toggleModeBtn').addEventListener('click', toggleMode);
             document.getElementById('monthSelect').addEventListener('change', changeMonth);
           document.getElementById('exportBtn').addEventListener('click', exportImage);
-
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'manualSaveBtn') manualSave();
+    });
         }
 
         function setupRealtimeListener() {
@@ -280,7 +282,13 @@
     <div class="fade-in space-y-8">
         ${editSectionHTML('Músicos', 'musicians', data.musicians, '🎸')}
         ${editSectionHTML('Canciones', 'songs', data.songs, '🎤')}
-        ${editNotesSectionHTML(data.notes || '')}  <!-- ← AGREGAR ESTA LÍNEA -->
+     ${editNotesSectionHTML(data.notes || '')}
+<div id="saveSection" class="pt-8 border-t border-slate-200 text-center">
+    <button id="manualSaveBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl text-sm font-black uppercase tracking-wider shadow-xl shadow-emerald-500/25 transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+        ✅ Guardado Confirmado
+    </button>
+    <p class="text-xs text-slate-500 mt-2 font-medium">Datos sincronizados con Firebase</p>
+</div>
     </div>`;
 }
 
@@ -486,6 +494,25 @@
                 AppState.isSaving = false;
             }
         }
+
+        // 🆕 BOTÓN GUARDAR MANUAL
+function manualSave() {
+    const btn = document.getElementById('manualSaveBtn');
+    const status = document.getElementById('syncStatus');
+    
+    btn.innerHTML = '🟢 Guardando...';
+    btn.className = 'bg-emerald-500 text-white px-8 py-3 rounded-2xl text-sm font-black uppercase tracking-wider shadow-xl shadow-emerald-500/25 transition-all transform hover:scale-[1.02] active:scale-[0.98] animate-pulse';
+    
+    save().then(() => {
+        btn.innerHTML = '✅ ¡Guardado!';
+        status.innerHTML = '<div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></div> ✅ CONFIRMADO';
+        
+        setTimeout(() => {
+            btn.innerHTML = '✅ Guardado Confirmado';
+            btn.className = btn.className.replace('animate-pulse', '');
+        }, 2000);
+    });
+}
 
         function toggleMode() {
             AppState.viewMode = AppState.viewMode === 'view' ? 'edit' : 'view';
