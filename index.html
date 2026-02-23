@@ -179,24 +179,34 @@
             }
         }
 
-        function setupInitialState() {
-            const hoy = new Date();
-            AppState.sundays = getSundays(AppState.currentMonth);
-            const hoyISO = hoy.toISOString().split('T')[0];
-            
-            AppState.activeIdx = AppState.sundays.findIndex(s => s >= hoyISO);
-
-            if (AppState.activeIdx === -1) {
-                if (AppState.currentMonth < 11) {
-                    AppState.currentMonth++;
-                    AppState.sundays = getSundays(AppState.currentMonth);
-                    AppState.activeIdx = 0;
-                } else {
-                    AppState.activeIdx = AppState.sundays.length - 1;
-                }
-            }
-            document.getElementById('monthSelect').value = AppState.currentMonth;
-        }
+       function setupInitialState() {
+    const hoy = new Date();
+    let month = AppState.currentMonth;
+    
+    // 🔄 BUSCAR MES CON DOMINGOS
+    while (month <= 11) {
+        AppState.sundays = getSundays(month);
+        if (AppState.sundays.length > 0) break;
+        month++;
+    }
+    
+    // Si no hay domingos en ningún mes futuro, usar el último disponible
+    if (AppState.sundays.length === 0) {
+        month = 1; // Marzo
+        AppState.sundays = getSundays(month);
+    }
+    
+    const hoyISO = hoy.toISOString().split('T')[0];
+    AppState.activeIdx = AppState.sundays.findIndex(s => s >= hoyISO);
+    
+    // Si no encuentra domingo >= hoy, usar el primero del mes
+    if (AppState.activeIdx === -1) {
+        AppState.activeIdx = 0;
+    }
+    
+    AppState.currentMonth = month;
+    document.getElementById('monthSelect').value = month;
+}
 
         function getSundays(month) {
             const year = 2026;
