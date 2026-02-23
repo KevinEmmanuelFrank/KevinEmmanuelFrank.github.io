@@ -4,584 +4,1115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Musical IEBLA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <style>
-    body { font-family: 'Inter', sans-serif; }
-    .fade-in { animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    button:active { transform: scale(0.97); }
-    .nav-btn { -webkit-tap-highlight-color: transparent; }
-    .drag-over { border: 2px dashed #3b82f6 !important; background: #eff6ff !important; }
-    .dragging { opacity: 0.6; transform: scale(0.98); }
-    
-    /* Glassmorphism PRO */
-    .glass { 
-        background: rgba(255,255,255,0.15); 
-        backdrop-filter: blur(24px); 
-        border: 1px solid rgba(255,255,255,0.25);
-    }
-    .glow-cyan { box-shadow: 0 0 30px rgba(6,182,212,0.4), 0 25px 50px rgba(0,0,0,0.5); }
-    .glow-purple { box-shadow: 0 0 30px rgba(168,85,247,0.4), 0 25px 50px rgba(0,0,0,0.5); }
-    .glow-lime { box-shadow: 0 0 30px rgba(132,204,22,0.4), 0 25px 50px rgba(0,0,0,0.5); }
-    .glow-blue { box-shadow: 0 0 30px rgba(59,130,246,0.4), 0 25px 50px rgba(0,0,0,0.5); }
-    .glow-amber { box-shadow: 0 0 30px rgba(251,191,36,0.4), 0 25px 50px rgba(0,0,0,0.5); }
-    .glow-emerald { box-shadow: 0 0 30px rgba(6,125,64,0.4), 0 25px 50px rgba(0,0,0,0.5); }
-    .neon-glow { text-shadow: 0 0 10px currentColor; }
-        .glass-white {
-    background: rgba(255,255,255,0.1);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.2);
-}
-</style>
+        :root {
+            --bg-deep:       #090c14;
+            --bg-mid:        #0e1220;
+            --bg-surface:    #141928;
+            --bg-card:       #1a2035;
+            --border:        rgba(255,255,255,0.07);
+            --border-bright: rgba(255,255,255,0.14);
+            --accent-cyan:   #22d3ee;
+            --accent-purple: #a78bfa;
+            --accent-emerald:#34d399;
+            --accent-amber:  #fbbf24;
+            --text-primary:  #f1f5f9;
+            --text-secondary:#94a3b8;
+            --text-muted:    #475569;
+            --glow-cyan:     rgba(34,211,238,0.15);
+            --glow-purple:   rgba(167,139,250,0.15);
+            --glow-emerald:  rgba(52,211,153,0.15);
+            --glow-amber:    rgba(251,191,36,0.15);
+        }
 
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: var(--bg-deep);
+            min-height: 100vh;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Subtle noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* Ambient light blobs */
+        .ambient {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .ambient-1 { width: 600px; height: 600px; background: rgba(34,211,238,0.05); top: -200px; right: -100px; }
+        .ambient-2 { width: 500px; height: 500px; background: rgba(167,139,250,0.06); bottom: -150px; left: -100px; }
+
+        /* APP WRAPPER */
+        .app-wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 28px 36px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-bright);
+            border-radius: 24px 24px 0 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), var(--accent-purple), transparent);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .brand-icon {
+            width: 52px; height: 52px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 24px rgba(34,211,238,0.25);
+            flex-shrink: 0;
+        }
+        .brand-icon svg { width: 26px; height: 26px; color: white; }
+
+        .brand-text h1 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 28px;
+            font-weight: 400;
+            font-style: italic;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        .brand-text p {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent-cyan);
+            margin-top: 4px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select, .btn {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 12px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        select {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-bright);
+            padding: 10px 16px;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        select:hover { border-color: var(--accent-cyan); }
+
+        .btn {
+            border: none;
+            padding: 10px 20px;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), #0ea5e9);
+            color: #0a0a0f;
+        }
+        .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn-primary:active { transform: scale(0.97); }
+
+        .btn-export {
+            background: var(--bg-surface);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(52,211,153,0.3);
+        }
+        .btn-export:hover { background: rgba(52,211,153,0.1); }
+        .btn-export.hidden { display: none; }
+
+        /* ── NAV ── */
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 28px;
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            width: 48px; height: 48px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-bright);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); background: rgba(34,211,238,0.06); }
+        .nav-btn:active { transform: scale(0.95); }
+        .nav-btn svg { width: 20px; height: 20px; }
+
+        .nav-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .sync-badge {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+        .sync-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .sync-dot.online { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+        .sync-dot.saving { background: var(--accent-amber); animation: pulse 1s infinite; }
+        .sync-dot.error  { background: #f87171; }
+
+        .nav-date-display {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        .nav-date-num {
+            font-family: 'Instrument Serif', serif;
+            font-size: 42px;
+            font-weight: 400;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        .nav-date-month {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        /* ── MAIN CONTENT ── */
+        .main {
+            padding: 32px;
+            background: var(--bg-mid);
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            min-height: 480px;
+        }
+
+        /* VIEW MODE */
+        .view-date-header {
+            text-align: center;
+            margin-bottom: 36px;
+            padding-bottom: 28px;
+            border-bottom: 1px solid var(--border);
+        }
+        .view-date-header .big-day {
+            font-family: 'Instrument Serif', serif;
+            font-size: 96px;
+            font-weight: 400;
+            font-style: italic;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .view-date-header .month-label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .card:hover { border-color: var(--border-bright); }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+        .card-title .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot-cyan    { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+        .dot-purple  { background: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple); }
+        .dot-emerald { background: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald); }
+        .dot-amber   { background: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber); }
+
+        .card-title span { color: var(--text-secondary); }
+
+        /* Tag chips */
+        .tags-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .tag {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-bright);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 7px 14px;
+            border-radius: 10px;
+        }
+
+        /* Song list */
+        .song-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .song-item:last-child { border-bottom: none; }
+        .song-num {
+            font-family: 'Instrument Serif', serif;
+            font-size: 20px;
+            font-style: italic;
+            color: var(--text-muted);
+            width: 28px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .song-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Notes */
+        .notes-text {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 28px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── EDIT MODE ── */
+        .add-btn {
+            width: 36px; height: 36px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-bright);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .add-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); background: rgba(34,211,238,0.06); }
+        .add-btn:active { transform: scale(0.95); }
+
+        /* Checkbox musicians */
+        .musicians-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 8px;
+            max-height: 340px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .musicians-grid::-webkit-scrollbar { width: 4px; }
+        .musicians-grid::-webkit-scrollbar-track { background: transparent; }
+        .musicians-grid::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+
+        .musician-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .musician-check:hover { border-color: var(--border-bright); }
+        .musician-check.selected {
+            border-color: var(--accent-cyan);
+            background: rgba(34,211,238,0.06);
+        }
+        .musician-check input[type=checkbox] { display: none; }
+        .check-box {
+            width: 18px; height: 18px;
+            border: 1.5px solid var(--border-bright);
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .musician-check.selected .check-box {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+        .check-box svg { width: 11px; height: 11px; color: #0a0a0f; display: none; }
+        .musician-check.selected .check-box svg { display: block; }
+        .musician-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+
+        .musician-count {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Edit list items */
+        .edit-list { display: flex; flex-direction: column; gap: 8px; }
+        .edit-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 4px 4px 4px 12px;
+            transition: border-color 0.15s;
+        }
+        .edit-item:hover { border-color: var(--border-bright); }
+        .drag-handle {
+            cursor: grab;
+            color: var(--text-muted);
+            font-size: 16px;
+            padding: 4px;
+            user-select: none;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .drag-handle:active { cursor: grabbing; }
+        .edit-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 4px;
+        }
+        .edit-input::placeholder { color: var(--text-muted); }
+        .del-btn {
+            width: 36px; height: 36px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .del-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+        .del-btn svg { width: 16px; height: 16px; }
+
+        /* Notes textarea */
+        .notes-textarea {
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.7;
+            padding: 16px;
+            resize: vertical;
+            min-height: 140px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .notes-textarea:focus { border-color: var(--accent-amber); }
+        .notes-textarea::placeholder { color: var(--text-muted); }
+
+        /* Save row */
+        .save-row {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+        .btn-save {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--accent-emerald), #059669);
+            color: #0a0a0f;
+            border: none;
+            padding: 13px 32px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-save:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn-save:active { transform: scale(0.97); }
+        .save-hint {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 36px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-bright);
+            border-radius: 0 0 24px 24px;
+            border-top-color: var(--border);
+        }
+        .footer-brand {
+            font-family: 'Instrument Serif', serif;
+            font-size: 18px;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+        .footer-date {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* Drag styles */
+        .dragging { opacity: 0.4; }
+        .drag-over { border-color: var(--accent-cyan) !important; background: rgba(34,211,238,0.06); }
+
+        /* Animations */
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+        /* Loading */
+        .loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 600px) {
+            .header { padding: 20px; flex-direction: column; align-items: flex-start; }
+            .header-controls { width: 100%; }
+            .main { padding: 20px 16px; }
+            .footer { padding: 16px 20px; }
+            .musicians-grid { grid-template-columns: 1fr 1fr; }
+            .view-date-header .big-day { font-size: 72px; }
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen p-3 md:p-6 lg:p-8 text-white">
+<body>
 
- <div class="max-w-4xl mx-auto glass rounded-3xl shadow-2xl overflow-hidden glow-cyan">
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
 
-        <!-- HEADER PRO -->
-        <header class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 md:p-8 text-white relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-emerald-600/10"></div>
-            <div class="relative flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/40 ring-2 ring-white/30">
-                        <svg viewBox="0 0 24 24" class="w-9 h-9 text-white drop-shadow-lg" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M9 18V5l12-2v13"></path>
-                            <circle cx="6" cy="18" r="3"></circle>
-                            <circle cx="18" cy="16" r="3"></circle>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-3xl md:text-4xl font-black italic tracking-tight leading-none bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent drop-shadow-lg">IEBLA</h1>
-                        <p class="text-blue-300 text-sm md:text-base font-bold uppercase tracking-widest mt-1 bg-blue-400/20 px-4 py-1.5 rounded-full inline-block shadow-md">Agenda Musical 2026</p>
-                    </div>
-                </div>
+<div class="app-wrapper">
 
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <select id="monthSelect" class="bg-slate-800/60 backdrop-blur-sm text-white text-sm px-6 py-3.5 rounded-2xl outline-none border border-white/30 cursor-pointer hover:bg-slate-700/90 transition-all shadow-xl shadow-black/30 hover:shadow-2xl">
-                        <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
-                        <option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>
-                        <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
-                        <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
-                    </select>
-                    <div class="flex gap-2">
-                        <button id="exportBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3.5 rounded-2xl text-sm font-black uppercase tracking-wider shadow-2xl shadow-green-500/40 hover:shadow-green-500/60 transition-all hidden">
-                            📱 PNG
-                        </button>
-                        <button id="toggleModeBtn" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3.5 rounded-2xl text-sm font-black uppercase tracking-wider shadow-2xl shadow-blue-500/40 hover:shadow-blue-500/60 transition-all">
-                            Editar
-                        </button>
-                    </div>
-                </div>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                </svg>
             </div>
-        </header>
-
-   <!-- NAV COMPLETO CORREGIDO -->
-<nav class="glass-white px-6 py-6 flex justify-between items-center gap-4 shadow-2xl border-b border-white/20 glow-purple">
-    <!-- BOTÓN PREV ✅ -->
-    <button id="prevSunday" class="w-16 h-16 glass-white hover:bg-white/30 flex items-center justify-center rounded-3xl transition-all duration-300 shadow-2xl hover:shadow-3xl text-cyan-300 hover:text-white active:scale-95 ring-2 ring-white/30 nav-btn">
-        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"/></svg>
-    </button>
-    
-    <!-- CENTRO NAV -->
-    <div class="flex flex-col items-center text-center">
-        <div id="syncStatus" class="flex gap-2.5 items-center text-xs font-black text-cyan-300 uppercase tracking-widest mb-3 glass-white px-4 py-2 rounded-2xl shadow-lg">
-            <div class="w-2.5 h-2.5 rounded-full bg-slate-400 shadow-inner"></div> Conectando...
+            <div class="brand-text">
+                <h1>IEBLA</h1>
+                <p>Agenda Musical 2026</p>
+            </div>
         </div>
-        <!-- resto igual -->
-    </div>
+        <div class="header-controls">
+            <select id="monthSelect">
+                <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
+                <option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>
+                <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
+                <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+            </select>
+            <button id="exportBtn" class="btn btn-export hidden">📷 PNG</button>
+            <button id="toggleModeBtn" class="btn btn-primary">Editar</button>
+        </div>
+    </header>
 
-    <!-- BOTÓN NEXT ✅ -->
-    <button id="nextSunday" class="w-16 h-16 glass-white hover:bg-white/30 flex items-center justify-center rounded-3xl transition-all duration-300 shadow-2xl hover:shadow-3xl text-cyan-300 hover:text-white active:scale-95 ring-2 ring-white/30 nav-btn">
-        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/></svg>
-    </button>
-</nav>
+    <!-- NAV -->
+    <nav class="nav">
+        <button id="prevSunday" class="nav-btn" aria-label="Anterior">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        </button>
 
-
-        <!-- CONTENIDO PRINCIPAL -->
-    <main id="contentArea" class="p-8 md:p-12 lg:p-16 min-h-[500px] glass-white glow-purple">
-            <div class="flex items-center justify-center h-full">
-                <p class="text-slate-400 text-lg animate-pulse font-medium">Cargando agenda...</p>
+        <div class="nav-center">
+            <div class="sync-badge" id="syncStatus">
+                <div class="sync-dot" id="syncDot"></div>
+                <span id="syncText">Conectando...</span>
             </div>
-        </main>
-
-        <!-- FOOTER PRO -->
-        <footer class="bg-gradient-to-r from-slate-900 to-slate-800 text-white/95 p-8 md:p-10 text-center border-t-4 border-blue-500/30 relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-emerald-500/5"></div>
-            <div class="relative">
-                <p id="todayLabel" class="text-sm font-black uppercase tracking-[0.5em] mb-4 bg-white/20 backdrop-blur-sm px-6 py-2 rounded-2xl inline-block shadow-2xl">Hoy</p>
-                <div class="flex flex-col items-center gap-2">
-                    <p class="text-3xl font-black bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-400 bg-clip-text text-transparent drop-shadow-2xl">IEBLA</p>
-                    <p class="text-sm font-bold uppercase tracking-widest bg-slate-700/50 px-4 py-1 rounded-full inline-block">Agenda Musical • 2026</p>
-                </div>
+            <div class="nav-date-display">
+                <span class="nav-date-num" id="navDateDisplay">—</span>
+                <span class="nav-date-month" id="navMonthDisplay">—</span>
             </div>
-        </footer>
-    </div>
+        </div>
 
-    <!-- Firebase SDK v11 -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        <button id="nextSunday" class="nav-btn" aria-label="Siguiente">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        </button>
+    </nav>
 
-        // Configuración unificada
-        const firebaseConfig = {
-            apiKey: "AIzaSyB4dnDnojGL8NNMSxRJFV4eVQvKUkdoKJM",
-            authDomain: "agenda-iebla.firebaseapp.com",
-            projectId: "agenda-iebla",
-            storageBucket: "agenda-iebla.firebasestorage.app",
-            messagingSenderId: "94924538907",
-            appId: "1:94924538907:web:861e69bbf351973f7de4be",
-            measurementId: "G-4L3GNF3SY6"
-        };
+    <!-- MAIN -->
+    <main class="main" id="contentArea">
+        <div class="loading-state">Cargando agenda…</div>
+    </main>
 
-        // Estado de la App
-        const AppState = {
-            viewMode: 'view',
-            currentMonth: new Date().getMonth(),
-            activeIdx: 0,
-            monthData: {},
-            sundays: [],
-            unsubscribe: null,
-            isSaving: false,
-            appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
-            user: null,
-            musiciansList: [
-                "Kevin (dirección/voz)", "Norma (dirección/voz)", "Nataly (dirección/voz)", 
-                "Gabriel (batería)","Anderson (batería)", "David (bajo)", "Lore (teclado/bajo)", "Magali (teclado)", "Thiago (teclado)",
-                "Pame (proyección)", "Nico (proyección)", "Sonia (proyección)", "Emma (guitarra)", "Kevin (guitarra)",
-                "Pedro (sonido)", "Cristian (sonido)", "Nestor (sonido)", "Ari (voz apoyo)", "Fernando (voz apoyo)", "Meli (voz apoyo)", "Iara (voz apoyo)"
-            ]
-        };
+    <!-- FOOTER -->
+    <footer class="footer">
+        <span class="footer-brand">IEBLA</span>
+        <span class="footer-date" id="todayLabel">—</span>
+    </footer>
 
-        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+</div>
 
-        let db, auth;
+<!-- Firebase SDK v11 -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        // Inicializar Firebase
-        async function init() {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
+    const firebaseConfig = {
+        apiKey: "AIzaSyB4dnDnojGL8NNMSxRJFV4eVQvKUkdoKJM",
+        authDomain: "agenda-iebla.firebaseapp.com",
+        projectId: "agenda-iebla",
+        storageBucket: "agenda-iebla.firebasestorage.app",
+        messagingSenderId: "94924538907",
+        appId: "1:94924538907:web:861e69bbf351973f7de4be",
+        measurementId: "G-4L3GNF3SY6"
+    };
 
-            try {
-                const cred = await signInAnonymously(auth);
-                AppState.user = cred.user;
-                
-                setupInitialState();
-                setupEventListeners();
-                setupRealtimeListener();
-                updateTodayLabel();
-            } catch (error) {
-                console.error("Error de inicialización:", error);
-                document.getElementById('contentArea').innerHTML = `<p class="text-red-500 text-center">Error al conectar: ${error.message}</p>`;
-            }
-        }
+    const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-       function setupInitialState() {
-    const hoy = new Date();
-    let month = AppState.currentMonth;
-    
-    // 🔄 BUSCAR MES CON DOMINGOS
-    while (month <= 11) {
-        AppState.sundays = getSundays(month);
-        if (AppState.sundays.length > 0) break;
-        month++;
+    const AppState = {
+        viewMode: 'view',
+        currentMonth: new Date().getMonth(),
+        activeIdx: 0,
+        monthData: {},
+        sundays: [],
+        unsubscribe: null,
+        isSaving: false,
+        appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
+        user: null,
+        musiciansList: [
+            "Kevin (dirección/voz)", "Norma (dirección/voz)", "Nataly (dirección/voz)",
+            "Gabriel (batería)", "Anderson (batería)", "David (bajo)", "Lore (teclado/bajo)",
+            "Magali (teclado)", "Thiago (teclado)", "Pame (proyección)", "Nico (proyección)",
+            "Sonia (proyección)", "Emma (guitarra)", "Kevin (guitarra)", "Pedro (sonido)",
+            "Cristian (sonido)", "Nestor (sonido)", "Ari (voz apoyo)", "Fernando (voz apoyo)",
+            "Meli (voz apoyo)", "Iara (voz apoyo)"
+        ]
+    };
+
+    let db, auth;
+
+    function setSyncStatus(state, text) {
+        const dot = document.getElementById('syncDot');
+        const txt = document.getElementById('syncText');
+        dot.className = 'sync-dot ' + (state || '');
+        txt.textContent = text;
     }
-    
-    // Si no hay domingos en ningún mes futuro, usar el último disponible
-    if (AppState.sundays.length === 0) {
-        month = 1; // Marzo
-        AppState.sundays = getSundays(month);
+
+    async function init() {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        try {
+            const cred = await signInAnonymously(auth);
+            AppState.user = cred.user;
+            setupInitialState();
+            setupEventListeners();
+            setupRealtimeListener();
+            updateTodayLabel();
+        } catch (error) {
+            document.getElementById('contentArea').innerHTML = `<div class="loading-state" style="color:#f87171">Error al conectar: ${error.message}</div>`;
+        }
     }
-    
-    const hoyISO = hoy.toISOString().split('T')[0];
-    AppState.activeIdx = AppState.sundays.findIndex(s => s >= hoyISO);
-    
-    // Si no encuentra domingo >= hoy, usar el primero del mes
-    if (AppState.activeIdx === -1) {
-        AppState.activeIdx = 0;
+
+    function setupInitialState() {
+        const hoy = new Date();
+        const hoyISO = hoy.toISOString().split('T')[0];
+
+        // Buscar el próximo domingo a partir de hoy, avanzando meses si hace falta
+        let month = hoy.getMonth();
+        let attempts = 0;
+
+        while (attempts < 12) {
+            const sundays = getSundays(month);
+            const idx = sundays.findIndex(s => s >= hoyISO);
+
+            if (idx !== -1) {
+                AppState.currentMonth = month;
+                AppState.sundays = sundays;
+                AppState.activeIdx = idx;
+                break;
+            }
+
+            // Este mes ya no tiene domingos futuros → avanzar
+            month = (month + 1) % 12;
+            attempts++;
+        }
+
+        // Fallback de seguridad: si no encontró nada (no debería pasar)
+        if (attempts >= 12) {
+            AppState.sundays = getSundays(AppState.currentMonth);
+            AppState.activeIdx = 0;
+        }
+
+        document.getElementById('monthSelect').value = AppState.currentMonth;
     }
-    
-    AppState.currentMonth = month;
-    document.getElementById('monthSelect').value = month;
-}
 
-        function getSundays(month) {
-            const year = 2026;
-            const date = new Date(year, month, 1);
-            const found = [];
-            while (date.getMonth() === month) {
-                if (date.getDay() === 0) found.push(new Date(date).toISOString().split('T')[0]);
-                date.setDate(date.getDate() + 1);
+    function getSundays(month) {
+        const date = new Date(2026, month, 1);
+        const found = [];
+        while (date.getMonth() === month) {
+            if (date.getDay() === 0) found.push(new Date(date).toISOString().split('T')[0]);
+            date.setDate(date.getDate() + 1);
+        }
+        return found;
+    }
+
+    function setupEventListeners() {
+        document.getElementById('prevSunday').addEventListener('click', () => {
+            if (AppState.activeIdx > 0) { AppState.activeIdx--; render(); }
+        });
+        document.getElementById('nextSunday').addEventListener('click', () => {
+            if (AppState.activeIdx < AppState.sundays.length - 1) { AppState.activeIdx++; render(); }
+        });
+        document.getElementById('toggleModeBtn').addEventListener('click', toggleMode);
+        document.getElementById('monthSelect').addEventListener('change', changeMonth);
+        document.getElementById('exportBtn').addEventListener('click', exportImage);
+    }
+
+    function setupRealtimeListener() {
+        if (AppState.unsubscribe) AppState.unsubscribe();
+        if (!AppState.user) return;
+        setSyncStatus('saving', 'Sincronizando…');
+        const monthKey = `2026-${AppState.currentMonth}`;
+        const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
+        AppState.unsubscribe = onSnapshot(docRef,
+            (snapshot) => {
+                AppState.monthData = snapshot.exists() ? snapshot.data() : {};
+                render();
+                setSyncStatus('online', 'Online');
+            },
+            (error) => {
+                console.error(error);
+                setSyncStatus('error', 'Error de red');
             }
-            return found;
+        );
+    }
+
+    function render() {
+        const dateKey = AppState.sundays[AppState.activeIdx];
+        if (!dateKey) return;
+        ensureData(dateKey);
+        const data = AppState.monthData[dateKey];
+        const d = new Date(dateKey + "T12:00:00");
+        const dayNum = d.getDate();
+        const monthLabel = monthNames[AppState.currentMonth];
+
+        document.getElementById('navDateDisplay').textContent = dayNum;
+        document.getElementById('navMonthDisplay').textContent = monthLabel;
+        document.getElementById('exportBtn').classList.toggle('hidden', AppState.viewMode !== 'view');
+
+        document.getElementById('contentArea').innerHTML =
+            AppState.viewMode === 'view'
+                ? renderView(data, dayNum, monthLabel)
+                : renderEdit(data, dayNum, monthLabel);
+
+        if (AppState.viewMode === 'edit') bindEditEvents();
+    }
+
+    function ensureData(dateKey) {
+        if (!AppState.monthData[dateKey]) {
+            AppState.monthData[dateKey] = { musicians: [], songs: [], notes: '' };
         }
+    }
 
-        function setupEventListeners() {
-            document.getElementById('prevSunday').addEventListener('click', () => {
-                if (AppState.activeIdx > 0) { AppState.activeIdx--; render(); }
-            });
+    function renderView(data, dayNum, monthLabel) {
+        const musiciansHTML = data.musicians.length
+            ? data.musicians.map(m => `<span class="tag">${m}</span>`).join('')
+            : '<div class="empty-state">Sin asignar</div>';
 
-            document.getElementById('nextSunday').addEventListener('click', () => {
-                if (AppState.activeIdx < AppState.sundays.length - 1) { AppState.activeIdx++; render(); }
-            });
+        const songsHTML = data.songs.length
+            ? data.songs.map((s, i) => `
+                <div class="song-item">
+                    <span class="song-num">${i + 1}</span>
+                    <span class="song-name">${s || '—'}</span>
+                </div>`).join('')
+            : '<div class="empty-state">Sin canciones</div>';
 
-            document.getElementById('toggleModeBtn').addEventListener('click', toggleMode);
-            document.getElementById('monthSelect').addEventListener('change', changeMonth);
-            document.getElementById('exportBtn').addEventListener('click', exportImage);
-        }
+        const notesHTML = data.notes
+            ? `<p class="notes-text">${data.notes}</p>`
+            : '<div class="empty-state">Sin notas</div>';
 
-        function setupRealtimeListener() {
-            if (AppState.unsubscribe) AppState.unsubscribe();
-            if (!AppState.user) return;
-
-            const monthKey = `2026-${AppState.currentMonth}`;
-            const status = document.getElementById('syncStatus');
-            status.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-inner"></div> Sincronizando...';
-
-            const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
-
-            AppState.unsubscribe = onSnapshot(docRef, 
-                (snapshot) => {
-                    AppState.monthData = snapshot.exists() ? snapshot.data() : {};
-                    render();
-                    status.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div> Online';
-                },
-                (error) => {
-                    console.error("Error en listener:", error);
-                    status.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-inner"></div> Error de red';
-                }
-            );
-        }
-
-        function render() {
-            const dateKey = AppState.sundays[AppState.activeIdx];
-            if (!dateKey) {
-                document.getElementById('navDateDisplay').innerText = "-";
-                return;
-            };
-
-            ensureData(dateKey);
-            const data = AppState.monthData[dateKey];
-            const dayNum = new Date(dateKey + "T12:00:00").getDate();
-
-            document.getElementById('navDateDisplay').innerText = dayNum;
-            document.getElementById('exportBtn').classList.toggle('hidden', AppState.viewMode !== 'view');
-
-            const container = document.getElementById('contentArea');
-            container.innerHTML = getContentHTML(data, dayNum);
-        }
-
-        function ensureData(dateKey) {
-            if (!AppState.monthData[dateKey]) {
-                AppState.monthData[dateKey] = { musicians: [], songs: [], notes: ''  };
-            }
-        }
-
-      function getContentHTML(data, dayNum) {
-    const monthLabel = monthNames[AppState.currentMonth];
-    if (AppState.viewMode === 'view') {
-        return `
-        <div class="fade-in">
-            <div class="text-center mb-12">
-                <h2 class="text-6xl md:text-7xl font-black bg-gradient-to-r from-cyan-400 via-white to-purple-400 bg-clip-text text-transparent tracking-tighter mb-2 drop-shadow-2xl neon-glow">${dayNum}</h2>
-                <p class="text-cyan-300 font-black uppercase tracking-[0.3em] text-lg bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-lg">${monthLabel}</p>
+        return `<div class="fade-in">
+            <div class="view-date-header">
+                <div class="big-day">${dayNum}</div>
+                <div class="month-label">${monthLabel} 2026</div>
             </div>
-            <div class="space-y-8">
-                <!-- MÚSICOS -->
-                <div class="glass rounded-3xl p-8 glow-cyan">
-                    <h3 class="text-cyan-300 font-black mb-6 flex items-center gap-3 text-lg uppercase tracking-widest neon-glow">🎸 Equipo Musical</h3>
-                    <div class="flex flex-wrap gap-3">
-                        ${data.musicians.length ? data.musicians.map(m => `<span class="glass-white px-5 py-3 rounded-2xl shadow-lg text-slate-100 font-bold text-base">${m}</span>`).join('') : '<p class="text-slate-400 italic text-lg w-full text-center font-medium py-8">Sin asignar</p>'}
-                    </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-cyan"></div><span>Equipo Musical</span></div>
                 </div>
-                
-                <!-- CANCIONES -->
-                <div class="glass rounded-3xl p-8 glow-purple">
-                    <h3 class="text-purple-300 font-black mb-6 flex items-center gap-3 text-lg uppercase tracking-widest neon-glow">🎤 Canciones</h3>
-                    <ul class="space-y-3">
-                        ${data.songs.length ? data.songs.map((s, i) => `<li class="glass-white p-5 rounded-2xl shadow-lg text-slate-100 font-bold text-base flex items-center gap-4"><span class="text-purple-400 text-xl font-black w-8 text-center">${i+1}</span> ${s}</li>`).join('') : '<p class="text-slate-400 italic text-lg text-center w-full font-medium py-8">Sin canciones</p>'}
-                    </ul>
+                <div class="tags-wrap">${musiciansHTML}</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
                 </div>
-                
-                <!-- NOTAS -->
-                <div class="glass rounded-3xl p-8 glow-lime">
-                    <h3 class="text-lime-400 font-black mb-6 flex items-center gap-3 text-lg uppercase tracking-widest neon-glow">📝 Notas Predicador</h3>
-                    <p class="text-slate-100 text-base leading-relaxed whitespace-pre-wrap">${data.notes || 'Sin notas'}</p>
+                ${songsHTML}
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-amber"></div><span>Notas Predicador</span></div>
                 </div>
+                ${notesHTML}
             </div>
         </div>`;
-    } else {
-        return `
-        <div class="fade-in space-y-10">
-            ${editSectionHTML('Músicos', 'musicians', data.musicians, '🎸')}
-            ${editSectionHTML('Canciones', 'songs', data.songs, '🎤')}
-            ${editNotesSectionHTML(data.notes || '')}
-            <div id="saveSection" class="pt-12 border-t border-white/30 text-center">
-                <button id="manualSaveBtn" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-14 py-6 rounded-3xl text-lg font-black uppercase tracking-widest shadow-2xl glow-lime hover:glow-lime transition-all transform hover:scale-[1.05] active:scale-[0.98] ring-4 ring-emerald-400/40">
-                    ✅ Guardado Confirmado
+    }
+
+    function renderEdit(data, dayNum, monthLabel) {
+        // Musicians checkboxes
+        const musicianRows = AppState.musiciansList.map(m => {
+            const sel = data.musicians.includes(m) ? 'selected' : '';
+            return `<label class="musician-check ${sel}">
+                <input type="checkbox" data-musician="${m}" data-field="musicians" ${sel ? 'checked' : ''}>
+                <div class="check-box">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M2 6l3 3 5-5"/>
+                    </svg>
+                </div>
+                <span class="musician-name">${m}</span>
+            </label>`;
+        }).join('');
+
+        const songsRows = data.songs.map((s, i) => `
+            <div class="edit-item" draggable="true" data-index="${i}">
+                <span class="drag-handle">⠿</span>
+                <input type="text" class="edit-input" value="${s}" data-idx="${i}" data-field="songs" placeholder="Nombre de la canción…">
+                <button class="del-btn" data-del-type="songs" data-del-idx="${i}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
-                <p class="text-lg text-slate-400 mt-4 font-semibold backdrop-blur-sm">Datos sincronizados con Firebase en tiempo real</p>
+            </div>`).join('');
+
+        return `<div class="fade-in">
+            <!-- MÚSICOS -->
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-cyan"></div><span>Equipo Musical</span></div>
+                </div>
+                <div class="musicians-grid" id="musiciansGrid">${musicianRows}</div>
+                <p class="musician-count">Seleccionados: <span id="musicianCount">${data.musicians.length}</span> / ${AppState.musiciansList.length}</p>
+            </div>
+
+            <!-- CANCIONES -->
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
+                    <button class="add-btn" id="add-songs">+</button>
+                </div>
+                <div class="edit-list" id="list-songs" data-type="songs">${songsRows}</div>
+            </div>
+
+            <!-- NOTAS -->
+            <div class="card" style="margin-bottom:0">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-amber"></div><span>Notas Predicador</span></div>
+                </div>
+                <textarea class="notes-textarea" data-field="notes" data-idx="0"
+                    placeholder="Mensaje principal, versículos clave, orden del culto…">${data.notes || ''}</textarea>
+            </div>
+
+            <div class="save-row">
+                <button class="btn-save" id="manualSaveBtn">Guardar cambios</button>
+                <span class="save-hint">Guardado automático activo</span>
             </div>
         </div>`;
     }
-}
 
+    function bindEditEvents() {
+        // Musician checkboxes — click on label
+        document.getElementById('musiciansGrid').addEventListener('click', (e) => {
+            const label = e.target.closest('.musician-check');
+            if (!label) return;
+            const cb = label.querySelector('input[type=checkbox]');
+            cb.checked = !cb.checked;
+            label.classList.toggle('selected', cb.checked);
+            const checkboxes = document.querySelectorAll('input[data-field="musicians"]');
+            const selected = Array.from(checkboxes).filter(c => c.checked).map(c => c.dataset.musician);
+            const dateKey = AppState.sundays[AppState.activeIdx];
+            AppState.monthData[dateKey].musicians = selected;
+            document.getElementById('musicianCount').textContent = selected.length;
+            debouncedSave();
+        });
 
-        function editSectionHTML(title, type, items, emoji) {
-            if (type === 'musicians') {
-                return `
-                    <section class="glass rounded-3xl p-8 glow-blue">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-black text-blue-800 uppercase text-lg tracking-widest flex items-center gap-3">${emoji} ${title}</h3>
-                        </div>
-                        <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-blue-200 max-h-80 overflow-y-auto">
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                ${AppState.musiciansList.map((musician, i) => {
-                                    const checked = items.includes(musician) ? 'checked' : '';
-                                    return `
-                                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-md border border-blue-100 hover:shadow-lg transition-all cursor-pointer group hover:bg-blue-50">
-                                            <input type="checkbox" 
-                                                data-musician="${musician}" 
-                                                data-field="musicians"
-                                                class="w-6 h-6 text-blue-600 rounded focus:ring-blue-500 shadow-sm" 
-                                                ${checked}>
-                                            <span class="text-base font-semibold text-slate-800 group-hover:text-blue-700">${musician}</span>
-                                        </label>`;
-                                }).join('')}
-                            </div>
-                            <p class="text-sm text-blue-600 mt-6 font-bold bg-blue-100/50 px-4 py-2 rounded-xl inline-block">
-                                Seleccionados: <span id="musicianCount">${items.length}</span>/21
-                            </p>
-                        </div>
-                    </section>`;
-            } else {
-                const color = type === 'songs' ? 'purple' : 'blue';
-                const isDraggable = type === 'songs';
-                return `
-                    <section class="glass rounded-3xl p-8 glow-${color === 'purple' ? 'purple' : 'blue'}">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-black text-${color}-800 uppercase text-lg tracking-widest flex items-center gap-3">${emoji} ${title}</h3>
-                            <button id="add-${type}" class="bg-gradient-to-r from-${color}-500 to-${color}-600 text-white w-14 h-14 rounded-2xl font-black text-2xl shadow-2xl shadow-${color}-500/50 hover:shadow-${color}-500/70 transition-all active:scale-95 hover:from-${color}-600 hover:to-${color}-700">+</button>
-                        </div>
-                        <div class="space-y-3 bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-${color}-200" id="list-${type}" data-type="${type}">
-                            ${items.map((item, i) => `
-                                <div class="flex gap-3 group items-center p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 hover:border-${color}-300 transition-all hover:shadow-lg ${isDraggable ? 'hover:cursor-grab' : ''}" 
-                                     ${isDraggable ? `draggable="true"` : ''} data-index="${i}">
-                                    ${isDraggable ? `<div class="cursor-grab text-slate-400 px-2 hover:text-slate-600 font-bold text-lg select-none">⠿</div>` : '<div class="w-3"></div>'}
-                                    <input type="text" value="${item}" data-idx="${i}" data-field="${type}"
-                                        placeholder="Escribir..." class="flex-1 p-3 bg-transparent border-none outline-none text-base font-semibold focus:font-black text-slate-800 rounded-xl">
-                                    <button data-del-type="${type}" data-del-idx="${i}" class="w-12 h-12 flex items-center justify-center rounded-2xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all group-hover:shadow-md">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </section>`;
-            }
-        }
+        // Add song
+        document.getElementById('add-songs').addEventListener('click', () => addItem('songs'));
 
-        function editNotesSectionHTML(notes) {
-            return `
-                <section class="glass rounded-3xl p-8 glow-amber">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-black text-amber-800 uppercase text-lg tracking-widest flex items-center gap-3">📝 Notas Predicador</h3>
-                    </div>
-                    <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-amber-200">
-                        <textarea data-field="notes" data-idx="0" 
-                            placeholder="Mensaje principal, versículos clave, orden del culto..." 
-                            class="w-full p-6 bg-white rounded-xl border border-amber-200 resize-vertical min-h-[160px] text-base font-semibold focus:font-black text-slate-800 outline-none shadow-inner">${notes}</textarea>
-                    </div>
-                </section>
-            `;
-        }
-
-        // Delegación de eventos para edición dinámica
-        document.addEventListener('click', (e) => {
-            if (e.target.id === 'add-musicians') addItem('musicians');
-            if (e.target.id === 'add-songs') addItem('songs');
-            
+        // Delete / inline edit / notes
+        document.getElementById('contentArea').addEventListener('click', (e) => {
             const delBtn = e.target.closest('[data-del-type]');
-            if (delBtn) {
-                const type = delBtn.dataset.delType;
-                const idx = parseInt(delBtn.dataset.delIdx);
-                removeItem(type, idx);
-            }
-
+            if (delBtn) removeItem(delBtn.dataset.delType, parseInt(delBtn.dataset.delIdx));
             if (e.target.id === 'manualSaveBtn') save();
         });
 
-        document.addEventListener('change', (e) => {
-            if (e.target.dataset.field) {
-                const field = e.target.dataset.field;
-                const dateKey = AppState.sundays[AppState.activeIdx];
-                
-                if (field === 'notes') {
-                    AppState.monthData[dateKey][field] = e.target.value;
-                } else if (field === 'musicians') {
-                    const checkboxes = document.querySelectorAll('input[data-field="musicians"]');
-                    const selectedMusicians = Array.from(checkboxes)
-                        .filter(cb => cb.checked)
-                        .map(cb => cb.dataset.musician);
-                    AppState.monthData[dateKey][field] = selectedMusicians;
-                    document.getElementById('musicianCount').textContent = selectedMusicians.length;
-                } else {
-                    const idx = parseInt(e.target.dataset.idx);
-                    AppState.monthData[dateKey][field][idx] = e.target.value;
-                }
-                debouncedSave();
-            }
-        });
-
-        function addItem(type) {
+        document.getElementById('contentArea').addEventListener('input', (e) => {
+            const field = e.target.dataset.field;
+            if (!field || field === 'musicians') return;
             const dateKey = AppState.sundays[AppState.activeIdx];
-            AppState.monthData[dateKey][type].push('');
-            render();
-            debouncedSave();
-        }
-
-        function removeItem(type, index) {
-            const dateKey = AppState.sundays[AppState.activeIdx];
-            AppState.monthData[dateKey][type].splice(index, 1);
-            render();
-            debouncedSave();
-        }
-
-        // Drag and Drop Logic
-        document.addEventListener('dragstart', (e) => {
-            if (e.target.draggable) {
-                e.target.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', e.target.dataset.index);
+            if (field === 'notes') {
+                AppState.monthData[dateKey].notes = e.target.value;
+            } else {
+                const idx = parseInt(e.target.dataset.idx);
+                AppState.monthData[dateKey][field][idx] = e.target.value;
             }
+            debouncedSave();
         });
 
-        document.addEventListener('dragover', (e) => {
+        // Drag and drop songs
+        const list = document.getElementById('list-songs');
+        if (!list) return;
+        let dragFrom = null;
+        list.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('[draggable]');
+            if (item) { dragFrom = parseInt(item.dataset.index); item.classList.add('dragging'); }
+        });
+        list.addEventListener('dragover', (e) => {
             e.preventDefault();
-            const over = e.target.closest('[draggable]');
-            if (over) over.classList.add('drag-over');
+            const item = e.target.closest('[draggable]');
+            if (item) item.classList.add('drag-over');
         });
-
-        document.addEventListener('dragleave', (e) => {
-            const over = e.target.closest('[draggable]');
-            if (over) over.classList.remove('drag-over');
+        list.addEventListener('dragleave', (e) => {
+            const item = e.target.closest('[draggable]');
+            if (item) item.classList.remove('drag-over');
         });
-
-        document.addEventListener('drop', (e) => {
+        list.addEventListener('drop', (e) => {
             e.preventDefault();
-            const container = e.target.closest('[data-type]');
-            const dragging = document.querySelector('.dragging');
-            const over = e.target.closest('[draggable]');
-            
-            if (container && dragging && over) {
-                const type = container.dataset.type;
-                if (type !== 'songs') return;
-
-                const fromIdx = parseInt(dragging.dataset.index);
-                const toIdx = parseInt(over.dataset.index);
+            const item = e.target.closest('[draggable]');
+            if (item && dragFrom !== null) {
+                const toIdx = parseInt(item.dataset.index);
                 const dateKey = AppState.sundays[AppState.activeIdx];
-                
-                const items = AppState.monthData[dateKey][type];
-                const [movedItem] = items.splice(fromIdx, 1);
-                items.splice(toIdx, 0, movedItem);
-                
+                const arr = AppState.monthData[dateKey].songs;
+                const [moved] = arr.splice(dragFrom, 1);
+                arr.splice(toIdx, 0, moved);
                 render();
                 debouncedSave();
             }
         });
-
-        document.addEventListener('dragend', () => {
+        list.addEventListener('dragend', () => {
             document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            dragFrom = null;
         });
+    }
 
-        let saveTimeout;
-        function debouncedSave() {
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(save, 1500);
+    function addItem(type) {
+        const dateKey = AppState.sundays[AppState.activeIdx];
+        AppState.monthData[dateKey][type].push('');
+        render();
+        // Focus last input
+        const inputs = document.querySelectorAll(`[data-field="${type}"]`);
+        if (inputs.length) inputs[inputs.length - 1].focus();
+        debouncedSave();
+    }
+
+    function removeItem(type, index) {
+        const dateKey = AppState.sundays[AppState.activeIdx];
+        AppState.monthData[dateKey][type].splice(index, 1);
+        render();
+        debouncedSave();
+    }
+
+    let saveTimeout;
+    function debouncedSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(save, 1500);
+    }
+
+    async function save() {
+        if (AppState.isSaving || !AppState.user) return;
+        AppState.isSaving = true;
+        setSyncStatus('saving', 'Guardando…');
+        try {
+            const monthKey = `2026-${AppState.currentMonth}`;
+            const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
+            await setDoc(docRef, AppState.monthData);
+            setSyncStatus('online', 'Online');
+        } catch (error) {
+            console.error(error);
+            setSyncStatus('error', 'Error al guardar');
+        } finally {
+            AppState.isSaving = false;
         }
+    }
 
-        async function save() {
-            if (AppState.isSaving || !AppState.user) return;
-            AppState.isSaving = true;
-            
-            const status = document.getElementById('syncStatus');
-            status.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse shadow-inner"></div> Guardando...';
+    function toggleMode() {
+        AppState.viewMode = AppState.viewMode === 'view' ? 'edit' : 'view';
+        document.getElementById('toggleModeBtn').textContent = AppState.viewMode === 'view' ? 'Editar' : 'Ver';
+        render();
+    }
 
-            try {
-                const monthKey = `2026-${AppState.currentMonth}`;
-                const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
-                await setDoc(docRef, AppState.monthData);
-                status.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div> Online';
-            } catch (error) {
-                console.error("Error guardando:", error);
-                status.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-inner"></div> Error al guardar';
-            } finally {
-                AppState.isSaving = false;
-            }
-        }
+    function changeMonth() {
+        AppState.currentMonth = parseInt(document.getElementById('monthSelect').value);
+        AppState.sundays = getSundays(AppState.currentMonth);
+        AppState.activeIdx = 0;
+        AppState.monthData = {};
+        setupRealtimeListener();
+    }
 
-        function toggleMode() {
-            AppState.viewMode = AppState.viewMode === 'view' ? 'edit' : 'view';
-            document.getElementById('toggleModeBtn').innerText = AppState.viewMode === 'view' ? 'Editar' : 'Ver';
-            render();
-        }
+    function updateTodayLabel() {
+        const hoy = new Date();
+        document.getElementById('todayLabel').textContent = "Hoy: " + hoy.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
 
-        function changeMonth() {
-            AppState.currentMonth = parseInt(document.getElementById('monthSelect').value);
-            AppState.sundays = getSundays(AppState.currentMonth);
-            AppState.activeIdx = 0;
-            AppState.monthData = {};
-            setupRealtimeListener();
-        }
-
-        function updateTodayLabel() {
-            const hoy = new Date();
-            document.getElementById('todayLabel').innerText = "Hoy: " + hoy.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-        }
-
-        async function exportImage() {
-            try {
-                if (!window.html2canvas) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                    document.head.appendChild(script);
-                    await new Promise(resolve => { script.onload = resolve; });
-                }
-
-                const header = document.querySelector('header');
-                const nav = document.querySelector('nav');
-                const footer = document.querySelector('footer');
-                const originalDisplay = { header: header.style.display, nav: nav.style.display, footer: footer.style.display };
-                header.style.display = nav.style.display = footer.style.display = 'none';
-
-                const content = document.getElementById('contentArea');
-                const canvas = await window.html2canvas(content, {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    width: content.scrollWidth,
-                    height: content.scrollHeight
+    async function exportImage() {
+        try {
+            if (!window.html2canvas) {
+                await new Promise((res, rej) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                    s.onload = res; s.onerror = rej;
+                    document.head.appendChild(s);
                 });
-
-                header.style.display = originalDisplay.header;
-                nav.style.display = originalDisplay.nav;
-                footer.style.display = originalDisplay.footer;
-
-                const link = document.createElement('a');
-                link.download = `IEBLA-Domingo-${new Date(AppState.sundays[AppState.activeIdx]).getDate()}-${monthNames[AppState.currentMonth].substring(0,3)}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-
-                console.log('Imagen generada!');
-            } catch (error) {
-                console.error('Error imagen:', error);
-                alert('Error generando imagen. Revisa consola.');
             }
+            const header = document.querySelector('.header');
+            const nav = document.querySelector('.nav');
+            const footer = document.querySelector('.footer');
+            [header, nav, footer].forEach(el => el.style.display = 'none');
+            const content = document.getElementById('contentArea');
+            const canvas = await window.html2canvas(content, {
+                scale: 2, useCORS: true,
+                backgroundColor: '#0e1220',
+                width: content.scrollWidth,
+                height: content.scrollHeight
+            });
+            [header, nav, footer].forEach(el => el.style.display = '');
+            const dateKey = AppState.sundays[AppState.activeIdx];
+            const dayNum = new Date(dateKey + 'T12:00:00').getDate();
+            const link = document.createElement('a');
+            link.download = `IEBLA-${dayNum}-${monthNames[AppState.currentMonth].substring(0,3)}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (error) {
+            console.error(error);
+            alert('Error generando imagen.');
         }
+    }
 
-        init();
-    </script>
+    init();
+</script>
 </body>
 </html>
