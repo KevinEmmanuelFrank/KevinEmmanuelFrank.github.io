@@ -17,9 +17,9 @@
             --accent-purple: #a78bfa;
             --accent-emerald:#34d399;
             --accent-amber:  #fbbf24;
-            --text-primary:  #f1f5f9;
-            --text-secondary:#94a3b8;
-            --text-muted:    #475569;
+            --text-primary:  #f8fafc;
+            --text-secondary:#cbd5e1;
+            --text-muted:    #94a3b8;
             --glow-cyan:     rgba(34,211,238,0.15);
             --glow-purple:   rgba(167,139,250,0.15);
             --glow-emerald:  rgba(52,211,153,0.15);
@@ -306,9 +306,9 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
         }
         .card-title .dot {
@@ -321,7 +321,7 @@
         .dot-emerald { background: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald); }
         .dot-amber   { background: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber); }
 
-        .card-title span { color: var(--text-secondary); }
+        .card-title span { color: var(--text-primary); }
 
         /* Tag chips */
         .tags-wrap {
@@ -333,9 +333,9 @@
             background: var(--bg-surface);
             border: 1px solid var(--border-bright);
             color: var(--text-primary);
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 500;
-            padding: 7px 14px;
+            padding: 9px 16px;
             border-radius: 10px;
         }
 
@@ -344,13 +344,13 @@
             display: flex;
             align-items: center;
             gap: 14px;
-            padding: 13px 0;
+            padding: 15px 0;
             border-bottom: 1px solid var(--border);
         }
         .song-item:last-child { border-bottom: none; }
         .song-num {
             font-family: 'Instrument Serif', serif;
-            font-size: 20px;
+            font-size: 22px;
             font-style: italic;
             color: var(--text-muted);
             width: 28px;
@@ -358,17 +358,17 @@
             flex-shrink: 0;
         }
         .song-name {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: 500;
             color: var(--text-primary);
         }
 
         /* Notes */
         .notes-text {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.7;
+            color: var(--text-primary);
+            line-height: 1.75;
             white-space: pre-wrap;
         }
 
@@ -376,9 +376,9 @@
             text-align: center;
             padding: 28px 0;
             color: var(--text-muted);
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 500;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
         }
 
         /* ── EDIT MODE ── */
@@ -441,14 +441,14 @@
         }
         .check-box svg { width: 11px; height: 11px; color: #0a0a0f; display: none; }
         .musician-check.selected .check-box svg { display: block; }
-        .musician-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+        .musician-name { font-size: 15px; font-weight: 500; color: var(--text-primary); }
 
         .musician-count {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             margin-top: 12px;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
         }
 
         /* Edit list items */
@@ -481,7 +481,7 @@
             outline: none;
             color: var(--text-primary);
             font-family: 'DM Sans', sans-serif;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 500;
             padding: 10px 4px;
         }
@@ -508,9 +508,9 @@
             border-radius: 12px;
             color: var(--text-primary);
             font-family: 'DM Sans', sans-serif;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 400;
-            line-height: 1.7;
+            line-height: 1.75;
             padding: 16px;
             resize: vertical;
             min-height: 140px;
@@ -547,9 +547,9 @@
         .btn-save:hover { opacity: 0.88; transform: translateY(-1px); }
         .btn-save:active { transform: scale(0.97); }
         .save-hint {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 500;
-            color: var(--text-muted);
+            color: var(--text-secondary);
         }
 
         /* ── FOOTER ── */
