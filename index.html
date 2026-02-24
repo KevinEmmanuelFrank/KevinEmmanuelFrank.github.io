@@ -819,8 +819,6 @@
         const dayNum = d.getDate();
         const monthLabel = monthNames[AppState.currentMonth];
 
-        document.getElementById('navDateDisplay').textContent = dayNum;
-        document.getElementById('navMonthDisplay').textContent = monthLabel;
         document.getElementById('exportBtn').classList.toggle('hidden', AppState.viewMode !== 'view');
 
         document.getElementById('contentArea').innerHTML =
