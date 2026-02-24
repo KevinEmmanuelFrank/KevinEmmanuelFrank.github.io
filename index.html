@@ -295,6 +295,12 @@
             transition: border-color 0.2s;
         }
         .card:hover { border-color: var(--border-bright); }
+        .card-cyan    { background: rgba(34,211,238,0.05);  border-color: rgba(34,211,238,0.18); }
+        .card-cyan:hover  { border-color: rgba(34,211,238,0.35); }
+        .card-purple  { background: rgba(167,139,250,0.05); border-color: rgba(167,139,250,0.18); }
+        .card-purple:hover { border-color: rgba(167,139,250,0.35); }
+        .card-amber   { background: rgba(251,191,36,0.05);  border-color: rgba(251,191,36,0.18); }
+        .card-amber:hover  { border-color: rgba(251,191,36,0.35); }
 
         .card-header {
             display: flex;
@@ -857,19 +863,19 @@
                 <div style="font-family:'Instrument Serif',serif; font-size:96px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} 2026</div>
             </div>
-            <div class="card">
+            <div class="card card-cyan">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-cyan"></div><span>Equipo Musical</span></div>
                 </div>
                 <div class="tags-wrap">${musiciansHTML}</div>
             </div>
-            <div class="card">
+            <div class="card card-purple">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
                 </div>
                 ${songsHTML}
             </div>
-            <div class="card">
+            <div class="card card-amber">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-amber"></div><span>Notas Predicador</span></div>
                 </div>
@@ -909,7 +915,7 @@
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:4px;">${monthLabel} 2026</div>
             </div>
             <!-- MÚSICOS -->
-            <div class="card" style="margin-bottom:16px">
+            <div class="card card-cyan" style="margin-bottom:16px">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-cyan"></div><span>Equipo Musical</span></div>
                 </div>
@@ -918,7 +924,7 @@
             </div>
 
             <!-- CANCIONES -->
-            <div class="card" style="margin-bottom:16px">
+            <div class="card card-purple" style="margin-bottom:16px">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
                     <button class="add-btn" id="add-songs">+</button>
@@ -927,7 +933,7 @@
             </div>
 
             <!-- NOTAS -->
-            <div class="card" style="margin-bottom:0">
+            <div class="card card-amber" style="margin-bottom:0">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-amber"></div><span>Notas Predicador</span></div>
                 </div>
