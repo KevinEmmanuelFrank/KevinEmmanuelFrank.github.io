@@ -228,6 +228,9 @@
         .sync-dot.online { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
         .sync-dot.saving { background: var(--accent-amber); animation: pulse 1s infinite; }
         .sync-dot.error  { background: #f87171; }
+        .sync-dot.saved  { background: #4ade80; box-shadow: 0 0 10px #4ade80; animation: savedFlash 0.4s ease; }
+        .sync-badge.saved { border-color: rgba(74,222,128,0.5); color: #4ade80; }
+        @keyframes savedFlash { 0%{transform:scale(1)} 40%{transform:scale(1.7)} 100%{transform:scale(1)} }
 
         .nav-date-display {
             display: flex;
@@ -561,9 +564,10 @@
         /* ── FOOTER ── */
         .footer {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            gap: 16px;
+            justify-content: center;
+            gap: 8px;
             padding: 20px 36px;
             background: var(--bg-card);
             border: 1px solid var(--border-bright);
@@ -582,6 +586,35 @@
             letter-spacing: 0.1em;
             text-transform: uppercase;
             color: var(--text-muted);
+        }
+
+        /* ── DATE BADGE ── */
+        .date-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .date-badge.next {
+            background: rgba(34,211,238,0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(34,211,238,0.35);
+        }
+        .date-badge.past {
+            background: rgba(148,163,184,0.1);
+            color: var(--text-muted);
+            border: 1px solid rgba(148,163,184,0.2);
+        }
+        .date-badge .badge-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: currentColor;
         }
 
         /* Drag styles */
@@ -609,8 +642,12 @@
         @media (max-width: 600px) {
             .header { padding: 20px; flex-direction: column; align-items: flex-start; }
             .header-controls { width: 100%; }
+            .nav { padding: 12px 16px; gap: 10px; }
+            .nav-btn { width: 40px; height: 40px; border-radius: 12px; }
+            .nav-btn svg { width: 17px; height: 17px; }
+            .sync-badge { font-size: 10px; padding: 5px 10px; }
             .main { padding: 20px 16px; }
-            .footer { padding: 16px 20px; }
+            .footer { padding: 14px 20px; gap: 6px; }
             .musicians-grid { grid-template-columns: 1fr 1fr; }
             .view-date-header .big-day { font-size: 72px; }
         }
@@ -825,12 +862,23 @@
         const dayNum = d.getDate();
         const monthLabel = monthNames[AppState.currentMonth];
 
+        // Badge: 'next' for the upcoming sunday, 'past' for past ones
+        const today = new Date(); today.setHours(0,0,0,0);
+        const sunday = new Date(dateKey + "T00:00:00");
+        let badge = null;
+        if (sunday < today) {
+            badge = 'past';
+        } else {
+            const nextSunday = AppState.sundays.find(s => new Date(s + "T00:00:00") >= today);
+            if (nextSunday && dateKey === nextSunday) badge = 'next';
+        }
+
         document.getElementById('exportBtn').classList.toggle('hidden', AppState.viewMode !== 'view');
 
         document.getElementById('contentArea').innerHTML =
             AppState.viewMode === 'view'
-                ? renderView(data, dayNum, monthLabel)
-                : renderEdit(data, dayNum, monthLabel);
+                ? renderView(data, dayNum, monthLabel, badge)
+                : renderEdit(data, dayNum, monthLabel, badge);
 
         if (AppState.viewMode === 'edit') bindEditEvents();
     }
@@ -841,7 +889,7 @@
         }
     }
 
-    function renderView(data, dayNum, monthLabel) {
+    function renderView(data, dayNum, monthLabel, badge) {
         const musiciansHTML = data.musicians.length
             ? data.musicians.map(m => `<span class="tag">${m}</span>`).join('')
             : '<div class="empty-state">Sin asignar</div>';
@@ -862,6 +910,7 @@
             <div style="text-align:center; margin-bottom:28px;">
                 <div style="font-family:'Instrument Serif',serif; font-size:96px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} 2026</div>
+                ${badge === 'next' ? '<div class="date-badge next"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past"><span class="badge-dot"></span>Pasado</div>' : ''}
             </div>
             <div class="card card-cyan">
                 <div class="card-header">
@@ -884,7 +933,7 @@
         </div>`;
     }
 
-    function renderEdit(data, dayNum, monthLabel) {
+    function renderEdit(data, dayNum, monthLabel, badge) {
         // Musicians checkboxes
         const musicianRows = AppState.musiciansList.map(m => {
             const sel = data.musicians.includes(m) ? 'selected' : '';
@@ -902,7 +951,7 @@
         const songsRows = data.songs.map((s, i) => `
             <div class="edit-item" draggable="true" data-index="${i}">
                 <span class="drag-handle">⠿</span>
-                <input type="text" class="edit-input" value="${s}" data-idx="${i}" data-field="songs" placeholder="Nombre de la canción…">
+                <input type="text" class="edit-input" value="${s}" data-idx="${i}" data-field="songs" placeholder="Ej: Cuán grande es Él">
                 <button class="del-btn" data-del-type="songs" data-del-idx="${i}">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -913,6 +962,7 @@
             <div style="text-align:center; margin-bottom:24px;">
                 <div style="font-family:'Instrument Serif',serif; font-size:72px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:4px;">${monthLabel} 2026</div>
+                ${badge === 'next' ? '<div class="date-badge next"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past"><span class="badge-dot"></span>Pasado</div>' : ''}
             </div>
             <!-- MÚSICOS -->
             <div class="card card-cyan" style="margin-bottom:16px">
@@ -938,7 +988,7 @@
                     <div class="card-title"><div class="dot dot-amber"></div><span>Notas</span></div>
                 </div>
                 <textarea class="notes-textarea" data-field="notes" data-idx="0"
-                    placeholder="Mensaje principal, versículos clave, orden del culto…">${data.notes || ''}</textarea>
+                    placeholder="Anotaciones para este domingo…">${data.notes || ''}</textarea>
             </div>
 
             <div class="save-row">
@@ -1055,7 +1105,12 @@
             const monthKey = `2026-${AppState.currentMonth}`;
             const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
             await setDoc(docRef, AppState.monthData);
-            setSyncStatus('online', 'Online');
+            setSyncStatus('saved', '¡Guardado!');
+            document.getElementById('syncStatus').classList.add('saved');
+            setTimeout(() => {
+                setSyncStatus('online', 'Online');
+                document.getElementById('syncStatus').classList.remove('saved');
+            }, 2000);
         } catch (error) {
             console.error(error);
             setSyncStatus('error', 'Error al guardar');
