@@ -551,6 +551,8 @@
             flex-shrink: 0;
         }
         .del-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+        .del-btn.del-confirm { color: #fff; background: #ef4444; border-radius: 8px; }
+        .del-btn.del-confirm:hover { background: #dc2626; }
         .del-btn svg { width: 16px; height: 16px; }
 
         /* Notes textarea */
@@ -739,7 +741,7 @@
                 <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
                 <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
             </select>
-            <button id="exportBtn" class="btn btn-export hidden">📷 PNG</button>
+            <button id="exportBtn" class="btn btn-export hidden" title="Exportar PNG" style="padding:10px 12px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
             <button id="toggleModeBtn" class="btn btn-primary" style="display:flex;align-items:center;gap:7px;">
                 <svg id="toggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 <span id="toggleLabel">Editar</span>
@@ -1035,7 +1037,7 @@
             <div style="text-align:center; margin-bottom:28px;">
                 <div style="font-family:'Instrument Serif',serif; font-size:88px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} ${YEAR}</div>
-                ${badge === 'next' ? '<div class="date-badge next"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past"><span class="badge-dot"></span>Pasado</div>' : ''}
+                ${badge === 'next' ? '<div class="date-badge next no-export"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past no-export"><span class="badge-dot"></span>Pasado</div>' : ''}
             </div>
             <div class="card card-cyan">
                 <div class="card-header">
@@ -1087,7 +1089,7 @@
             <div style="text-align:center; margin-bottom:24px;">
                 <div style="font-family:'Instrument Serif',serif; font-size:88px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:4px;">${monthLabel} ${YEAR}</div>
-                ${badge === 'next' ? '<div class="date-badge next"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past"><span class="badge-dot"></span>Pasado</div>' : ''}
+                ${badge === 'next' ? '<div class="date-badge next no-export"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past no-export"><span class="badge-dot"></span>Pasado</div>' : ''}
             </div>
             <!-- MÚSICOS -->
             <div class="card card-cyan" style="margin-bottom:16px">
@@ -1140,10 +1142,38 @@
         // Add song
         document.getElementById('add-songs').addEventListener('click', () => addItem('songs'));
 
-        // Delete / inline edit / notes
+        // Delete with confirm-on-second-tap
+        let pendingDel = null;
+        let pendingDelTimer = null;
+        const XIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+        const CheckIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+
         document.getElementById('contentArea').addEventListener('click', (e) => {
             const delBtn = e.target.closest('[data-del-type]');
-            if (delBtn) removeItem(delBtn.dataset.delType, parseInt(delBtn.dataset.delIdx));
+            if (delBtn) {
+                if (pendingDel === delBtn) {
+                    clearTimeout(pendingDelTimer);
+                    pendingDel = null;
+                    removeItem(delBtn.dataset.delType, parseInt(delBtn.dataset.delIdx));
+                } else {
+                    if (pendingDel) {
+                        pendingDel.classList.remove('del-confirm');
+                        pendingDel.innerHTML = XIcon;
+                        clearTimeout(pendingDelTimer);
+                    }
+                    pendingDel = delBtn;
+                    delBtn.classList.add('del-confirm');
+                    delBtn.innerHTML = CheckIcon;
+                    pendingDelTimer = setTimeout(() => {
+                        if (pendingDel === delBtn) {
+                            delBtn.classList.remove('del-confirm');
+                            delBtn.innerHTML = XIcon;
+                            pendingDel = null;
+                        }
+                    }, 2500);
+                }
+                return;
+            }
             if (e.target.id === 'manualSaveBtn') save();
         });
 
@@ -1351,31 +1381,43 @@
         const nav = document.querySelector('.nav');
         const footer = document.querySelector('.footer');
         const els = [header, nav, footer];
-        const hide = () => els.forEach(el => el.style.display = 'none');
-        const show = () => els.forEach(el => el.style.display = '');
+        const hide = () => { els.forEach(el => el.style.display = 'none'); document.querySelectorAll('.no-export').forEach(el => el.style.visibility = 'hidden'); };
+        const show = () => { els.forEach(el => el.style.display = ''); document.querySelectorAll('.no-export').forEach(el => el.style.visibility = ''); };
 
-        // Build a temporary branded header for the export
+        // Datos de la fecha actual
+        const dateKey = AppState.sundays[AppState.activeIdx];
+        const d = new Date(dateKey + 'T12:00:00');
+        const dayNum = d.getDate();
+        const monthLabel = monthNames[AppState.currentMonth];
+
+        // Logo del footer
         const logoImg = document.querySelector('.footer img');
         const logoSrc = logoImg ? logoImg.src : '';
+
+        // Build a beautiful export header with big date hero
         const exportHeader = document.createElement('div');
         exportHeader.id = 'exportHeader';
-        exportHeader.style.cssText = [
-            'display:flex', 'align-items:center', 'justify-content:space-between',
-            'padding:18px 28px', 'background:#1a2035',
-            'border-bottom:1px solid rgba(255,255,255,0.14)',
-            'font-family:DM Sans,sans-serif',
-        ].join(';');
+        exportHeader.style.cssText = 'font-family:DM Sans,sans-serif;';
         exportHeader.innerHTML = `
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:40px;height:40px;background:linear-gradient(135deg,#22d3ee,#a78bfa);border-radius:12px;display:flex;align-items:center;justify-content:center;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <!-- Top bar: brand + logo -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:#1a2035;border-bottom:1px solid rgba(255,255,255,0.1);">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:38px;height:38px;background:linear-gradient(135deg,#22d3ee,#a78bfa);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-family:'Instrument Serif',serif;font-size:18px;font-style:italic;color:#f8fafc;line-height:1;">Agenda Musical</div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#22d3ee;margin-top:3px;">IEBLA ${YEAR}</div>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-family:'Instrument Serif',serif;font-size:20px;font-style:italic;color:#f8fafc;line-height:1;">Agenda Musical</div>
-                    <div style="font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#22d3ee;margin-top:2px;">IEBLA ${YEAR}</div>
-                </div>
+                ${logoSrc ? `<div style="background:rgba(255,255,255,0.92);border-radius:10px;padding:5px 10px;"><img src="${logoSrc}" style="height:26px;width:auto;display:block;"></div>` : ''}
             </div>
-            ${logoSrc ? `<div style="background:rgba(255,255,255,0.92);border-radius:10px;padding:5px 10px;"><img src="${logoSrc}" style="height:28px;width:auto;display:block;"></div>` : ''}
+            <!-- Hero: fecha grande centrada -->
+            <div style="text-align:center;padding:36px 28px 28px;background:linear-gradient(180deg,#141928 0%,#0e1220 100%);border-bottom:1px solid rgba(255,255,255,0.08);">
+                <div style="font-family:'Instrument Serif',serif;font-size:110px;font-weight:400;font-style:italic;line-height:1.1;padding-top:8px;background:linear-gradient(135deg,#22d3ee,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${dayNum}</div>
+                <div style="font-size:13px;font-weight:700;letter-spacing:0.35em;text-transform:uppercase;color:#cbd5e1;margin-top:8px;">${monthLabel} ${YEAR}</div>
+                <div style="display:inline-block;margin-top:12px;padding:5px 16px;border-radius:20px;background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.3);font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#22d3ee;">Domingo</div>
+            </div>
         `;
 
         try {
@@ -1397,8 +1439,6 @@
                 height: content.scrollHeight
             });
             exportHeader.remove();
-            const dateKey = AppState.sundays[AppState.activeIdx];
-            const dayNum = new Date(dateKey + 'T12:00:00').getDate();
             const link = document.createElement('a');
             link.download = `IEBLA-${dayNum}-${monthNames[AppState.currentMonth].substring(0,3)}.png`;
             link.href = canvas.toDataURL('image/png');
