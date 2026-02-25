@@ -533,17 +533,17 @@
             letter-spacing: 0.04em;
             padding: 4px 11px;
             border-radius: 20px;
-            border: 1px solid var(--border-bright);
-            color: var(--text-muted);
-            background: var(--bg-card);
+            border: 1px dashed rgba(255,255,255,0.15);
+            color: rgba(148,163,184,0.45);
+            background: transparent;
             cursor: pointer;
             transition: all 0.15s;
             -webkit-tap-highlight-color: transparent;
         }
-        .role-chip:hover { border-color: var(--accent-purple); color: var(--accent-purple); }
+        .role-chip:hover { border-color: var(--accent-purple); color: var(--accent-purple); border-style: solid; }
         .role-chip.role-active {
             background: rgba(167,139,250,0.15);
-            border-color: rgba(167,139,250,0.55);
+            border: 1px solid rgba(167,139,250,0.55);
             color: var(--accent-purple);
         }
 
@@ -899,6 +899,7 @@
         sundays: [],
         unsubscribe: null,
         isSaving: false,
+        skipNextSnapshot: false,
         appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
         user: null,
         musiciansConfig: [
@@ -1050,6 +1051,11 @@
         const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
         AppState.unsubscribe = onSnapshot(docRef,
             (snapshot) => {
+                if (AppState.skipNextSnapshot) {
+                    AppState.skipNextSnapshot = false;
+                    setSyncStatus('online', 'Online');
+                    return;
+                }
                 AppState.monthData = snapshot.exists() ? snapshot.data() : {};
                 render();
                 setSyncStatus('online', 'Online');
@@ -1515,6 +1521,7 @@
     async function save() {
         if (AppState.isSaving || !AppState.user) return Promise.resolve();
         AppState.isSaving = true;
+        AppState.skipNextSnapshot = true;
         setSyncStatus('saving', 'Guardando…');
         try {
             const monthKey = `${YEAR}-${AppState.currentMonth}`;
