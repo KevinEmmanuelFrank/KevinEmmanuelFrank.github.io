@@ -449,9 +449,9 @@
 
         /* Checkbox musicians */
         .musicians-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-            gap: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
             max-height: 340px;
             overflow-y: auto;
             padding-right: 4px;
@@ -459,6 +459,93 @@
         .musicians-grid::-webkit-scrollbar { width: 4px; }
         .musicians-grid::-webkit-scrollbar-track { background: transparent; }
         .musicians-grid::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+
+        /* ── MUSICIAN ROWS ── */
+        .musician-row {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+        }
+        .musician-row:hover { border-color: var(--border-bright); }
+        .musician-row.selected {
+            background: rgba(34,211,238,0.06);
+            border-color: rgba(34,211,238,0.4);
+        }
+        .musician-main {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 12px;
+        }
+        .check-box {
+            width: 18px; height: 18px;
+            border: 1.5px solid var(--border-bright);
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .check-box svg { width: 11px; height: 11px; color: transparent; transition: color 0.1s; }
+        .musician-row.selected .check-box {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+        .musician-row.selected .check-box svg { color: #0a0a0f; }
+        .musician-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            flex: 1;
+            transition: color 0.15s;
+        }
+        .musician-row.selected .musician-name { color: var(--text-primary); }
+        .musician-single-role {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 2px 7px;
+            background: var(--bg-card);
+            border-radius: 5px;
+            transition: all 0.15s;
+        }
+        .musician-row.selected .musician-single-role {
+            color: var(--accent-cyan);
+            background: rgba(34,211,238,0.1);
+        }
+        /* Role chips */
+        .role-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 0 12px 10px 39px;
+        }
+        .role-chips-hidden { display: none; }
+        .role-chip {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            padding: 4px 11px;
+            border-radius: 20px;
+            border: 1px solid var(--border-bright);
+            color: var(--text-muted);
+            background: var(--bg-card);
+            cursor: pointer;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .role-chip:hover { border-color: var(--accent-purple); color: var(--accent-purple); }
+        .role-chip.role-active {
+            background: rgba(167,139,250,0.15);
+            border-color: rgba(167,139,250,0.55);
+            color: var(--accent-purple);
+        }
 
 
 
@@ -710,11 +797,10 @@
         }
 
         @media (max-width: 380px) {
-            .musicians-grid {
-                max-height: none;
-            }
+            .musicians-grid { max-height: none; }
             .musician-name { font-size: 13px; }
-            .role-chip { font-size: 11px; padding: 3px 10px; }
+            .musician-main { padding: 8px 11px; gap: 8px; }
+            .role-chips { padding: 0 11px 9px 36px; gap: 4px; }
         }
     </style>
 </head>
