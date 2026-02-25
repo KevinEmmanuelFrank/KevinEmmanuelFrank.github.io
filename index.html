@@ -1278,7 +1278,7 @@
                 return `<div class="song-item">
                     <span class="song-num">${i + 1}</span>
                     <span class="song-name">${s || '—'}</span>
-                    ${hasDanza ? `<span class="danza-icon" title="Acompañada por Danza"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M18.5 8.5c-1.5 1-3.5 1.5-6.5 1.5s-5-0.5-6.5-1.5"/><path d="M6 10.5c-.5 2-.5 4 0 6.5l1 3h10l1-3c.5-2.5.5-4.5 0-6.5"/><path d="M9 13l-1.5 4M15 13l1.5 4"/></svg></span>` : ''}
+                    ${hasDanza ? `<span class="danza-icon" title="Acompañada por Danza"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 0-4 3-4 7s4 5 4 9"/><path d="M12 3c0 0 4 3 4 7s-4 5-4 9"/><path d="M8 7c-2 1-3 3-2.5 5s3 3 5 2"/><path d="M16 7c2 1 3 3 2.5 5s-3 3-5 2"/></svg></span>` : ''}
                 </div>`;
             }).join('')
             : `<div class="empty-state">
@@ -1286,7 +1286,7 @@
                 <span class="empty-label">Sin canciones</span>
                 <span class="empty-hint">Agregá canciones en modo edición</span>
             </div>`;
-        const danzaBanner = danzaActive ? `<div class="danza-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M18.5 8.5c-1.5 1-3.5 1.5-6.5 1.5s-5-0.5-6.5-1.5"/><path d="M6 10.5c-.5 2-.5 4 0 6.5l1 3h10l1-3c.5-2.5.5-4.5 0-6.5"/><path d="M9 13l-1.5 4M15 13l1.5 4"/></svg>Este domingo el equipo de Danza estará presente</div>` : '';
+        const danzaBanner = danzaActive ? `<div class="danza-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 0-4 3-4 7s4 5 4 9"/><path d="M12 3c0 0 4 3 4 7s-4 5-4 9"/><path d="M8 7c-2 1-3 3-2.5 5s3 3 5 2"/><path d="M16 7c2 1 3 3 2.5 5s-3 3-5 2"/></svg>Este domingo Worshipers estará presente</div>` : '';
 
         const notesHTML = data.notes
             ? `<div class="notes-text">${formatNotes(data.notes)}</div>`
@@ -1392,7 +1392,7 @@
             <!-- DANZA -->
             <div class="card card-emerald" style="margin-bottom:16px" id="danzaCard">
                 <div class="card-header">
-                    <div class="card-title"><div class="dot dot-emerald"></div><span>Danza</span></div>
+                    <div class="card-title"><div class="dot dot-emerald"></div><span>Worshipers</span></div>
                     <label class="danza-toggle" id="danzaToggle">
                         <input type="checkbox" id="danzaCheck" ${data.danza && data.danza.active ? 'checked' : ''}>
                         <span class="danza-toggle-track"><span class="danza-toggle-thumb"></span></span>
@@ -1481,38 +1481,65 @@
         // Add song
         document.getElementById('add-songs').addEventListener('click', () => addItem('songs'));
 
-        // Danza toggle
+        // Danza toggle — update DOM directly to avoid losing focus/state
         const danzaCheck = document.getElementById('danzaCheck');
         if (danzaCheck) {
             danzaCheck.addEventListener('change', () => {
                 const dateKey = AppState.sundays[AppState.activeIdx];
-                AppState.monthData[dateKey].danza.active = danzaCheck.checked;
-                if (!danzaCheck.checked) AppState.monthData[dateKey].danza.songs = [];
-                render();
-                bindEditEvents();
+                const isActive = danzaCheck.checked;
+                AppState.monthData[dateKey].danza.active = isActive;
+                if (!isActive) AppState.monthData[dateKey].danza.songs = [];
+
+                // Update label
+                const label = danzaCheck.closest('.danza-toggle').querySelector('.danza-toggle-label');
+                if (label) label.textContent = isActive ? 'Presente' : 'No presente';
+
+                // Show/hide song list
+                let songsList = document.getElementById('danzaSongsList');
+                if (isActive && !songsList) {
+                    const data = AppState.monthData[dateKey];
+                    const container = document.getElementById('danzaCard').querySelector('.card-header').parentElement;
+                    const div = document.createElement('div');
+                    div.className = 'danza-songs-list';
+                    div.id = 'danzaSongsList';
+                    div.innerHTML = data.songs.length
+                        ? `<p class="danza-hint">Seleccioná las canciones que acompañará:</p>` +
+                          data.songs.map((s, i) => `<label class="danza-song-row" data-song-idx="${i}">
+                            <div class="check-box"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg></div>
+                            <span>${s || '—'}</span>
+                          </label>`).join('')
+                        : `<p class="danza-hint">Primero agregá canciones en la sección de arriba.</p>`;
+                    container.appendChild(div);
+                    bindDanzaSongEvents(div, dateKey);
+                } else if (!isActive && songsList) {
+                    songsList.remove();
+                }
                 debouncedSave();
             });
         }
 
-        // Danza song selection
+        // Danza song selection (existing list on render)
         const danzaList = document.getElementById('danzaSongsList');
-        if (danzaList) {
-            danzaList.addEventListener('click', (e) => {
-                const row = e.target.closest('.danza-song-row');
-                if (!row) return;
-                const idx = parseInt(row.dataset.songIdx);
-                const dateKey = AppState.sundays[AppState.activeIdx];
-                const danza = AppState.monthData[dateKey].danza;
-                const pos = danza.songs.indexOf(idx);
-                if (pos === -1) danza.songs.push(idx);
-                else danza.songs.splice(pos, 1);
-                row.classList.toggle('selected', danza.songs.includes(idx));
-                row.querySelector('.check-box').querySelector('svg').style.color = danza.songs.includes(idx) ? '#0a0a0f' : 'transparent';
-                row.querySelector('.check-box').style.background = danza.songs.includes(idx) ? 'var(--accent-emerald)' : '';
-                row.querySelector('.check-box').style.borderColor = danza.songs.includes(idx) ? 'var(--accent-emerald)' : '';
-                debouncedSave();
-            });
-        }
+        if (danzaList) bindDanzaSongEvents(danzaList, AppState.sundays[AppState.activeIdx]);
+    }
+
+    function bindDanzaSongEvents(container, dateKey) {
+        container.addEventListener('click', (e) => {
+            const row = e.target.closest('.danza-song-row');
+            if (!row) return;
+            const idx = parseInt(row.dataset.songIdx);
+            const danza = AppState.monthData[dateKey].danza;
+            const pos = danza.songs.indexOf(idx);
+            if (pos === -1) danza.songs.push(idx);
+            else danza.songs.splice(pos, 1);
+            const isSelected = danza.songs.includes(idx);
+            row.classList.toggle('selected', isSelected);
+            const cb = row.querySelector('.check-box');
+            cb.querySelector('svg').style.color = isSelected ? '#0a0a0f' : 'transparent';
+            cb.style.background = isSelected ? 'var(--accent-emerald)' : '';
+            cb.style.borderColor = isSelected ? 'var(--accent-emerald)' : '';
+            debouncedSave();
+        });
 
         // Delete with confirm-on-second-tap
         let pendingDel = null;
