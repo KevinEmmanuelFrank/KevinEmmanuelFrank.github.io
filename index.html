@@ -195,6 +195,7 @@
         }
         .nav-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); background: rgba(34,211,238,0.06); }
         .nav-btn:active { transform: scale(0.95); }
+        .nav-btn:disabled { opacity: 0.3; pointer-events: none; cursor: default; }
         .nav-btn svg { width: 20px; height: 20px; }
 
         .nav-center {
@@ -228,6 +229,9 @@
         .sync-dot.online { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
         .sync-dot.saving { background: var(--accent-amber); animation: pulse 1s infinite; }
         .sync-dot.error  { background: #f87171; }
+        .sync-dot.offline { background: #f87171; animation: pulse 2s infinite; }
+        .sync-badge.offline { border-color: rgba(248,113,113,0.4); color: #f87171; cursor: pointer; }
+        .sync-badge.offline:hover { background: rgba(248,113,113,0.08); }
         .sync-dot.saved  { background: #4ade80; box-shadow: 0 0 10px #4ade80; animation: savedFlash 0.4s ease; }
         .sync-badge.saved { border-color: rgba(74,222,128,0.5); color: #4ade80; }
         @keyframes savedFlash { 0%{transform:scale(1)} 40%{transform:scale(1.7)} 100%{transform:scale(1)} }
@@ -270,7 +274,7 @@
         }
         .view-date-header .big-day {
             font-family: 'Instrument Serif', serif;
-            font-size: 96px;
+            font-size: 88px;
             font-weight: 400;
             font-style: italic;
             line-height: 1;
@@ -405,6 +409,7 @@
         }
         .add-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); background: rgba(34,211,238,0.06); }
         .add-btn:active { transform: scale(0.95); }
+        .add-btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
 
         /* Checkbox musicians */
         .musicians-grid {
@@ -649,7 +654,20 @@
             .main { padding: 20px 16px; }
             .footer { padding: 14px 20px; gap: 6px; }
             .musicians-grid { grid-template-columns: 1fr 1fr; }
-            .view-date-header .big-day { font-size: 72px; }
+            .view-date-header .big-day { font-size: 88px; }
+        }
+
+        @media (max-width: 380px) {
+            .musicians-grid {
+                grid-template-columns: 1fr;
+                max-height: 280px;
+            }
+            .musician-check {
+                padding: 8px 12px;
+                gap: 8px;
+            }
+            .musician-name { font-size: 13px; }
+            .check-box { width: 16px; height: 16px; }
         }
     </style>
 </head>
@@ -670,7 +688,7 @@
             </div>
             <div class="brand-text">
                 <h1>IEBLA</h1>
-                <p>Agenda Musical 2026</p>
+                <p id="headerYear">Agenda Musical …</p>
             </div>
         </div>
         <div class="header-controls">
@@ -681,7 +699,10 @@
                 <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
             </select>
             <button id="exportBtn" class="btn btn-export hidden">📷 PNG</button>
-            <button id="toggleModeBtn" class="btn btn-primary">Editar</button>
+            <button id="toggleModeBtn" class="btn btn-primary" style="display:flex;align-items:center;gap:7px;">
+                <svg id="toggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span id="toggleLabel">Editar</span>
+            </button>
         </div>
     </header>
 
@@ -734,6 +755,8 @@
 
     const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
+    const YEAR = new Date().getFullYear();
+
     const AppState = {
         viewMode: 'view',
         currentMonth: new Date().getMonth(),
@@ -756,11 +779,38 @@
 
     let db, auth;
 
+    let connectTimeout;
     function setSyncStatus(state, text) {
         const dot = document.getElementById('syncDot');
         const txt = document.getElementById('syncText');
+        const badge = document.getElementById('syncStatus');
         dot.className = 'sync-dot ' + (state || '');
         txt.textContent = text;
+        // Manage badge classes
+        badge.classList.remove('saved', 'offline');
+        if (state === 'offline') badge.classList.add('offline');
+        // Clear any pending connection timeout on success/error
+        if (state === 'online' || state === 'error' || state === 'offline') {
+            clearTimeout(connectTimeout);
+        }
+    }
+
+    function startConnectTimeout() {
+        clearTimeout(connectTimeout);
+        connectTimeout = setTimeout(() => {
+            const dot = document.getElementById('syncDot');
+            // Only fire if still in a pending state
+            if (dot && (dot.classList.contains('saving') || !dot.classList.contains('online'))) {
+                setSyncStatus('offline', 'Sin conexión');
+                // Allow retry on click
+                document.getElementById('syncStatus').onclick = () => {
+                    document.getElementById('syncStatus').onclick = null;
+                    setSyncStatus('saving', 'Reconectando…');
+                    startConnectTimeout();
+                    setupRealtimeListener();
+                };
+            }
+        }, 9000);
     }
 
     async function init() {
@@ -768,6 +818,7 @@
         db = getFirestore(app);
         auth = getAuth(app);
         try {
+            startConnectTimeout();
             const cred = await signInAnonymously(auth);
             AppState.user = cred.user;
             setupInitialState();
@@ -813,7 +864,7 @@
     }
 
     function getSundays(month) {
-        const date = new Date(2026, month, 1);
+        const date = new Date(YEAR, month, 1);
         const found = [];
         while (date.getMonth() === month) {
             if (date.getDay() === 0) found.push(new Date(date).toISOString().split('T')[0]);
@@ -838,7 +889,8 @@
         if (AppState.unsubscribe) AppState.unsubscribe();
         if (!AppState.user) return;
         setSyncStatus('saving', 'Sincronizando…');
-        const monthKey = `2026-${AppState.currentMonth}`;
+        startConnectTimeout();
+        const monthKey = `${YEAR}-${AppState.currentMonth}`;
         const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
         AppState.unsubscribe = onSnapshot(docRef,
             (snapshot) => {
@@ -881,6 +933,10 @@
                 : renderEdit(data, dayNum, monthLabel, badge);
 
         if (AppState.viewMode === 'edit') bindEditEvents();
+
+        // Update arrow button disabled states
+        document.getElementById('prevSunday').disabled = AppState.activeIdx === 0;
+        document.getElementById('nextSunday').disabled = AppState.activeIdx === AppState.sundays.length - 1;
     }
 
     function ensureData(dateKey) {
@@ -908,8 +964,8 @@
 
         return `<div class="fade-in">
             <div style="text-align:center; margin-bottom:28px;">
-                <div style="font-family:'Instrument Serif',serif; font-size:96px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
-                <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} 2026</div>
+                <div style="font-family:'Instrument Serif',serif; font-size:88px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
+                <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} ${YEAR}</div>
                 ${badge === 'next' ? '<div class="date-badge next"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past"><span class="badge-dot"></span>Pasado</div>' : ''}
             </div>
             <div class="card card-cyan">
@@ -960,8 +1016,8 @@
         return `<div class="fade-in">
             <!-- FECHA -->
             <div style="text-align:center; margin-bottom:24px;">
-                <div style="font-family:'Instrument Serif',serif; font-size:72px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
-                <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:4px;">${monthLabel} 2026</div>
+                <div style="font-family:'Instrument Serif',serif; font-size:88px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
+                <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:4px;">${monthLabel} ${YEAR}</div>
                 ${badge === 'next' ? '<div class="date-badge next"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past"><span class="badge-dot"></span>Pasado</div>' : ''}
             </div>
             <!-- MÚSICOS -->
@@ -977,7 +1033,7 @@
             <div class="card card-purple" style="margin-bottom:16px">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
-                    <button class="add-btn" id="add-songs">+</button>
+                    <button class="add-btn" id="add-songs" ${data.songs.length >= 12 ? 'disabled title="Máximo 12 canciones"' : ''}>+</button>
                 </div>
                 <div class="edit-list" id="list-songs" data-type="songs">${songsRows}</div>
             </div>
@@ -1040,7 +1096,34 @@
         // Drag and drop songs
         const list = document.getElementById('list-songs');
         if (!list) return;
+        // ── Drag & drop: mouse + touch ──
         let dragFrom = null;
+        let touchClone = null;
+        let touchOffsetX = 0, touchOffsetY = 0;
+
+        function getItemAtY(y) {
+            return Array.from(list.querySelectorAll('[draggable]')).find(el => {
+                const r = el.getBoundingClientRect();
+                return y >= r.top && y <= r.bottom;
+            });
+        }
+
+        function doMove(fromIdx, toIdx) {
+            if (fromIdx === toIdx || toIdx === null) return;
+            const dateKey = AppState.sundays[AppState.activeIdx];
+            const arr = AppState.monthData[dateKey].songs;
+            const [moved] = arr.splice(fromIdx, 1);
+            arr.splice(toIdx, 0, moved);
+            render();
+            debouncedSave();
+        }
+
+        function clearDragStyles() {
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        // Mouse events
         list.addEventListener('dragstart', (e) => {
             const item = e.target.closest('[draggable]');
             if (item) { dragFrom = parseInt(item.dataset.index); item.classList.add('dragging'); }
@@ -1048,6 +1131,7 @@
         list.addEventListener('dragover', (e) => {
             e.preventDefault();
             const item = e.target.closest('[draggable]');
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
             if (item) item.classList.add('drag-over');
         });
         list.addEventListener('dragleave', (e) => {
@@ -1057,25 +1141,56 @@
         list.addEventListener('drop', (e) => {
             e.preventDefault();
             const item = e.target.closest('[draggable]');
-            if (item && dragFrom !== null) {
-                const toIdx = parseInt(item.dataset.index);
-                const dateKey = AppState.sundays[AppState.activeIdx];
-                const arr = AppState.monthData[dateKey].songs;
-                const [moved] = arr.splice(dragFrom, 1);
-                arr.splice(toIdx, 0, moved);
-                render();
-                debouncedSave();
-            }
+            if (item && dragFrom !== null) doMove(dragFrom, parseInt(item.dataset.index));
         });
-        list.addEventListener('dragend', () => {
-            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+        list.addEventListener('dragend', () => { clearDragStyles(); dragFrom = null; });
+
+        // Touch events
+        list.addEventListener('touchstart', (e) => {
+            const handle = e.target.closest('.drag-handle');
+            if (!handle) return;
+            const item = handle.closest('[draggable]');
+            if (!item) return;
+            dragFrom = parseInt(item.dataset.index);
+            item.classList.add('dragging');
+            const touch = e.touches[0];
+            const rect = item.getBoundingClientRect();
+            touchOffsetX = touch.clientX - rect.left;
+            touchOffsetY = touch.clientY - rect.top;
+            // Create floating clone
+            touchClone = item.cloneNode(true);
+            touchClone.style.cssText = `position:fixed;z-index:9999;pointer-events:none;opacity:0.85;width:${rect.width}px;left:${rect.left}px;top:${rect.top}px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);`;
+            document.body.appendChild(touchClone);
+            e.preventDefault();
+        }, { passive: false });
+
+        list.addEventListener('touchmove', (e) => {
+            if (dragFrom === null || !touchClone) return;
+            const touch = e.touches[0];
+            touchClone.style.left = (touch.clientX - touchOffsetX) + 'px';
+            touchClone.style.top  = (touch.clientY - touchOffsetY) + 'px';
+            // Highlight target
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            const target = getItemAtY(touch.clientY);
+            if (target && parseInt(target.dataset.index) !== dragFrom) target.classList.add('drag-over');
+            e.preventDefault();
+        }, { passive: false });
+
+        list.addEventListener('touchend', (e) => {
+            if (dragFrom === null) return;
+            if (touchClone) { touchClone.remove(); touchClone = null; }
+            const touch = e.changedTouches[0];
+            const target = getItemAtY(touch.clientY);
+            if (target) doMove(dragFrom, parseInt(target.dataset.index));
+            clearDragStyles();
             dragFrom = null;
         });
     }
 
+    const SONG_LIMIT = 12;
     function addItem(type) {
         const dateKey = AppState.sundays[AppState.activeIdx];
+        if (type === 'songs' && AppState.monthData[dateKey].songs.length >= SONG_LIMIT) return;
         AppState.monthData[dateKey][type].push('');
         render();
         // Focus last input
@@ -1102,7 +1217,7 @@
         AppState.isSaving = true;
         setSyncStatus('saving', 'Guardando…');
         try {
-            const monthKey = `2026-${AppState.currentMonth}`;
+            const monthKey = `${YEAR}-${AppState.currentMonth}`;
             const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
             await setDoc(docRef, AppState.monthData);
             setSyncStatus('saved', '¡Guardado!');
@@ -1119,13 +1234,26 @@
         }
     }
 
+    const ICON_PENCIL = '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
+    const ICON_EYE    = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+
+    function setToggleBtn(mode) {
+        document.getElementById('toggleIcon').innerHTML = mode === 'view' ? ICON_PENCIL : ICON_EYE;
+        document.getElementById('toggleLabel').textContent = mode === 'view' ? 'Editar' : 'Ver';
+    }
+
     function toggleMode() {
         AppState.viewMode = AppState.viewMode === 'view' ? 'edit' : 'view';
-        document.getElementById('toggleModeBtn').textContent = AppState.viewMode === 'view' ? 'Editar' : 'Ver';
+        setToggleBtn(AppState.viewMode);
         render();
     }
 
     function changeMonth() {
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+            saveTimeout = null;
+            save();
+        }
         AppState.currentMonth = parseInt(document.getElementById('monthSelect').value);
         AppState.sundays = getSundays(AppState.currentMonth);
         AppState.activeIdx = 0;
@@ -1135,10 +1263,17 @@
 
     function updateTodayLabel() {
         const hoy = new Date();
+        document.getElementById('headerYear').textContent = `Agenda Musical ${YEAR}`;
         document.getElementById('todayLabel').textContent = "Hoy: " + hoy.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
     }
 
     async function exportImage() {
+        const header = document.querySelector('.header');
+        const nav = document.querySelector('.nav');
+        const footer = document.querySelector('.footer');
+        const els = [header, nav, footer];
+        const hide = () => els.forEach(el => el.style.display = 'none');
+        const show = () => els.forEach(el => el.style.display = '');
         try {
             if (!window.html2canvas) {
                 await new Promise((res, rej) => {
@@ -1148,10 +1283,7 @@
                     document.head.appendChild(s);
                 });
             }
-            const header = document.querySelector('.header');
-            const nav = document.querySelector('.nav');
-            const footer = document.querySelector('.footer');
-            [header, nav, footer].forEach(el => el.style.display = 'none');
+            hide();
             const content = document.getElementById('contentArea');
             const canvas = await window.html2canvas(content, {
                 scale: 2, useCORS: true,
@@ -1159,7 +1291,6 @@
                 width: content.scrollWidth,
                 height: content.scrollHeight
             });
-            [header, nav, footer].forEach(el => el.style.display = '');
             const dateKey = AppState.sundays[AppState.activeIdx];
             const dayNum = new Date(dateKey + 'T12:00:00').getDate();
             const link = document.createElement('a');
@@ -1169,6 +1300,8 @@
         } catch (error) {
             console.error(error);
             alert('Error generando imagen.');
+        } finally {
+            show();
         }
     }
 
