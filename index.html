@@ -384,6 +384,12 @@
             line-height: 1.75;
             white-space: pre-wrap;
         }
+        .notes-text strong { font-weight: 700; color: var(--text-primary); }
+        .notes-divider {
+            border: none;
+            border-top: 1px solid var(--border-bright);
+            margin: 14px 0;
+        }
 
         .empty-state {
             text-align: center;
@@ -457,13 +463,6 @@
         .musician-check.selected .check-box svg { display: block; }
         .musician-name { font-size: 15px; font-weight: 500; color: var(--text-primary); }
 
-        .musician-count {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-top: 12px;
-            letter-spacing: 0.03em;
-        }
 
         /* Edit list items */
         .edit-list { display: flex; flex-direction: column; gap: 8px; }
@@ -486,8 +485,47 @@
             user-select: none;
             line-height: 1;
             flex-shrink: 0;
+            position: relative;
+            transition: color 0.2s;
         }
         .drag-handle:active { cursor: grabbing; }
+        .drag-handle:hover { color: var(--accent-cyan); }
+
+        /* Desktop tooltip */
+        @media (hover: hover) {
+            .drag-handle::after {
+                content: 'Arrastrá para reordenar';
+                position: absolute;
+                left: 32px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: var(--bg-card);
+                border: 1px solid var(--border-bright);
+                color: var(--text-secondary);
+                font-family: 'DM Sans', sans-serif;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.05em;
+                white-space: nowrap;
+                padding: 4px 10px;
+                border-radius: 8px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.15s;
+                z-index: 10;
+            }
+            .drag-handle:hover::after { opacity: 1; }
+        }
+
+        /* First-time hint pulse on the handle */
+        @keyframes handlePulse {
+            0%   { color: var(--text-muted); transform: scale(1); }
+            30%  { color: var(--accent-cyan); transform: scale(1.35); }
+            60%  { color: var(--text-muted); transform: scale(1); }
+            80%  { color: var(--accent-cyan); transform: scale(1.25); }
+            100% { color: var(--text-muted); transform: scale(1); }
+        }
+        .drag-handle.hint { animation: handlePulse 0.9s ease forwards; }
         .edit-input {
             flex: 1;
             background: transparent;
@@ -758,6 +796,7 @@
     const YEAR = new Date().getFullYear();
 
     const AppState = {
+        dragHintShown: false,
         viewMode: 'view',
         currentMonth: new Date().getMonth(),
         activeIdx: 0,
@@ -874,6 +913,14 @@
     }
 
     function setupEventListeners() {
+        window.addEventListener('beforeunload', () => {
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+                saveTimeout = null;
+                save();
+            }
+        });
+
         document.getElementById('prevSunday').addEventListener('click', () => {
             if (AppState.activeIdx > 0) { AppState.activeIdx--; render(); }
         });
@@ -903,6 +950,18 @@
                 setSyncStatus('error', 'Error de red');
             }
         );
+    }
+
+    function formatNotes(text) {
+        return text
+            .split('\n')
+            .map(line => {
+                if (line.trim() === '---') return '<hr class="notes-divider">';
+                // Bold: **text**
+                line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                return line;
+            })
+            .join('\n');
     }
 
     function render() {
@@ -940,9 +999,18 @@
     }
 
     function ensureData(dateKey) {
-        if (!AppState.monthData[dateKey]) {
+        const d = AppState.monthData[dateKey];
+        if (!d || typeof d !== 'object') {
             AppState.monthData[dateKey] = { musicians: [], songs: [], notes: '' };
+            return;
         }
+        // Patch any missing or corrupt individual fields
+        if (!Array.isArray(d.musicians)) d.musicians = [];
+        if (!Array.isArray(d.songs))    d.songs = [];
+        if (typeof d.notes !== 'string') d.notes = '';
+        // Sanitize array entries — must be strings
+        d.musicians = d.musicians.filter(m => typeof m === 'string');
+        d.songs     = d.songs.map(s => (typeof s === 'string' ? s : ''));
     }
 
     function renderView(data, dayNum, monthLabel, badge) {
@@ -959,7 +1027,7 @@
             : '<div class="empty-state">Sin canciones</div>';
 
         const notesHTML = data.notes
-            ? `<p class="notes-text">${data.notes}</p>`
+            ? `<div class="notes-text">${formatNotes(data.notes)}</div>`
             : '<div class="empty-state">Sin notas</div>';
 
         return `<div class="fade-in">
@@ -1026,7 +1094,6 @@
                     <div class="card-title"><div class="dot dot-cyan"></div><span>Equipo Musical</span></div>
                 </div>
                 <div class="musicians-grid" id="musiciansGrid">${musicianRows}</div>
-                <p class="musician-count">Seleccionados: <span id="musicianCount">${data.musicians.length}</span> / ${AppState.musiciansList.length}</p>
             </div>
 
             <!-- CANCIONES -->
@@ -1044,7 +1111,7 @@
                     <div class="card-title"><div class="dot dot-amber"></div><span>Notas</span></div>
                 </div>
                 <textarea class="notes-textarea" data-field="notes" data-idx="0"
-                    placeholder="Anotaciones para este domingo…">${data.notes || ''}</textarea>
+                    placeholder="Anotaciones para este domingo… (**negrita**, --- para separar secciones)">${data.notes || ''}</textarea>
             </div>
 
             <div class="save-row">
@@ -1066,7 +1133,6 @@
             const selected = Array.from(checkboxes).filter(c => c.checked).map(c => c.dataset.musician);
             const dateKey = AppState.sundays[AppState.activeIdx];
             AppState.monthData[dateKey].musicians = selected;
-            document.getElementById('musicianCount').textContent = selected.length;
             debouncedSave();
         });
 
@@ -1246,6 +1312,18 @@
         AppState.viewMode = AppState.viewMode === 'view' ? 'edit' : 'view';
         setToggleBtn(AppState.viewMode);
         render();
+        // Show drag hint on first ever entry to edit mode
+        if (AppState.viewMode === 'edit' && !AppState.dragHintShown) {
+            AppState.dragHintShown = true;
+            setTimeout(() => {
+                document.querySelectorAll('.drag-handle').forEach((el, i) => {
+                    setTimeout(() => {
+                        el.classList.add('hint');
+                        el.addEventListener('animationend', () => el.classList.remove('hint'), { once: true });
+                    }, i * 120);
+                });
+            }, 350);
+        }
     }
 
     function changeMonth() {
@@ -1274,6 +1352,31 @@
         const els = [header, nav, footer];
         const hide = () => els.forEach(el => el.style.display = 'none');
         const show = () => els.forEach(el => el.style.display = '');
+
+        // Build a temporary branded header for the export
+        const logoImg = document.querySelector('.footer img');
+        const logoSrc = logoImg ? logoImg.src : '';
+        const exportHeader = document.createElement('div');
+        exportHeader.id = 'exportHeader';
+        exportHeader.style.cssText = [
+            'display:flex', 'align-items:center', 'justify-content:space-between',
+            'padding:18px 28px', 'background:#1a2035',
+            'border-bottom:1px solid rgba(255,255,255,0.14)',
+            'font-family:DM Sans,sans-serif',
+        ].join(';');
+        exportHeader.innerHTML = `
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#22d3ee,#a78bfa);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </div>
+                <div>
+                    <div style="font-family:'Instrument Serif',serif;font-size:20px;font-style:italic;color:#f8fafc;line-height:1;">Agenda Musical</div>
+                    <div style="font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#22d3ee;margin-top:2px;">IEBLA ${YEAR}</div>
+                </div>
+            </div>
+            ${logoSrc ? `<div style="background:rgba(255,255,255,0.92);border-radius:10px;padding:5px 10px;"><img src="${logoSrc}" style="height:28px;width:auto;display:block;"></div>` : ''}
+        `;
+
         try {
             if (!window.html2canvas) {
                 await new Promise((res, rej) => {
@@ -1285,12 +1388,14 @@
             }
             hide();
             const content = document.getElementById('contentArea');
+            content.prepend(exportHeader);
             const canvas = await window.html2canvas(content, {
                 scale: 2, useCORS: true,
                 backgroundColor: '#0e1220',
                 width: content.scrollWidth,
                 height: content.scrollHeight
             });
+            exportHeader.remove();
             const dateKey = AppState.sundays[AppState.activeIdx];
             const dayNum = new Date(dateKey + 'T12:00:00').getDate();
             const link = document.createElement('a');
@@ -1301,6 +1406,7 @@
             console.error(error);
             alert('Error generando imagen.');
         } finally {
+            if (document.getElementById('exportHeader')) exportHeader.remove();
             show();
         }
     }
