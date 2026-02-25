@@ -256,8 +256,11 @@
             font-family: 'Instrument Serif', serif;
             font-size: 42px;
             font-weight: 400;
-            color: var(--text-primary);
             line-height: 1;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .nav-date-month {
             font-size: 13px;
@@ -1168,7 +1171,7 @@
 
             <div class="save-row">
                 <button class="btn-save" id="manualSaveBtn">Guardar cambios</button>
-                <span class="save-hint">Guardado automático activo</span>
+                <span class="save-hint" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.7"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>Guardado automático activo</span>
             </div>
         </div>`;
     }
@@ -1223,7 +1226,28 @@
                 }
                 return;
             }
-            if (e.target.id === 'manualSaveBtn') save();
+            if (e.target.id === 'manualSaveBtn') {
+                const btn = document.getElementById('manualSaveBtn');
+                btn.disabled = true;
+                btn.textContent = 'Guardando…';
+                save().then(() => {
+                    btn.textContent = '¡Guardado!';
+                    btn.style.background = 'linear-gradient(135deg, #4ade80, #059669)';
+                    setTimeout(() => {
+                        btn.textContent = 'Guardar cambios';
+                        btn.style.background = '';
+                        btn.disabled = false;
+                    }, 2000);
+                }).catch(() => {
+                    btn.textContent = 'Error al guardar';
+                    btn.style.background = 'linear-gradient(135deg, #f87171, #dc2626)';
+                    setTimeout(() => {
+                        btn.textContent = 'Guardar cambios';
+                        btn.style.background = '';
+                        btn.disabled = false;
+                    }, 2000);
+                });
+            }
         });
 
         document.getElementById('contentArea').addEventListener('input', (e) => {
@@ -1359,7 +1383,7 @@
     }
 
     async function save() {
-        if (AppState.isSaving || !AppState.user) return;
+        if (AppState.isSaving || !AppState.user) return Promise.resolve();
         AppState.isSaving = true;
         setSyncStatus('saving', 'Guardando…');
         try {
@@ -1416,6 +1440,11 @@
         AppState.sundays = getSundays(AppState.currentMonth);
         AppState.activeIdx = 0;
         AppState.monthData = {};
+        // Reset to view mode when changing month
+        if (AppState.viewMode === 'edit') {
+            AppState.viewMode = 'view';
+            setToggleBtn('view');
+        }
         setupRealtimeListener();
     }
 
