@@ -758,6 +758,118 @@
             background: currentColor;
         }
 
+        /* ── DANZA ── */
+        .dot-emerald { background: var(--accent-emerald); box-shadow: 0 0 8px rgba(52,211,153,0.5); }
+        .card-emerald { border-color: rgba(52,211,153,0.2); }
+        .card-emerald .card-header { border-bottom-color: rgba(52,211,153,0.12); }
+
+        .danza-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .danza-toggle input { display: none; }
+        .danza-toggle-track {
+            width: 38px; height: 22px;
+            background: var(--bg-deep);
+            border: 1.5px solid var(--border-bright);
+            border-radius: 11px;
+            position: relative;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .danza-toggle input:checked ~ .danza-toggle-track {
+            background: rgba(52,211,153,0.2);
+            border-color: var(--accent-emerald);
+        }
+        .danza-toggle-thumb {
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 16px; height: 16px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .danza-toggle input:checked ~ .danza-toggle-track .danza-toggle-thumb {
+            left: 18px;
+            background: var(--accent-emerald);
+        }
+        .danza-toggle-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+        .danza-toggle input:checked ~ * ~ .danza-toggle-label { color: var(--accent-emerald); }
+
+        .danza-songs-list { padding-top: 4px; }
+        .danza-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        .danza-song-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-surface);
+            cursor: pointer;
+            margin-bottom: 5px;
+            transition: all 0.15s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .danza-song-row:hover { border-color: var(--border-bright); }
+        .danza-song-row.selected {
+            background: rgba(52,211,153,0.06);
+            border-color: rgba(52,211,153,0.4);
+            color: var(--text-primary);
+        }
+        .danza-song-row.selected .check-box {
+            background: var(--accent-emerald);
+            border-color: var(--accent-emerald);
+        }
+        .danza-song-row.selected .check-box svg { color: #0a0a0f; }
+
+        /* Danza icon on song items in view mode */
+        .danza-icon {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            color: var(--accent-emerald);
+            opacity: 0.85;
+            flex-shrink: 0;
+        }
+        .danza-icon svg { width: 15px; height: 15px; }
+
+        /* Danza banner in view mode */
+        .danza-banner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 10px 14px;
+            background: rgba(52,211,153,0.07);
+            border: 1px solid rgba(52,211,153,0.25);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-emerald);
+            letter-spacing: 0.02em;
+        }
+        .danza-banner svg { width: 16px; height: 16px; flex-shrink: 0; }
+
         /* Drag styles */
         .dragging { opacity: 0.4; }
         .drag-over { border-color: var(--accent-cyan) !important; background: rgba(34,211,238,0.06); }
@@ -1088,15 +1200,21 @@
         const dayNum = d.getDate();
         const monthLabel = monthNames[AppState.currentMonth];
 
-        // Badge: 'next' for the upcoming sunday, 'past' for past ones
+        // Badge: 'next' only for the single next sunday globally, 'past' for all past ones
         const today = new Date(); today.setHours(0,0,0,0);
+        const todayISO = today.toISOString().split('T')[0];
         const sunday = new Date(dateKey + "T00:00:00");
         let badge = null;
         if (sunday < today) {
             badge = 'past';
         } else {
-            const nextSunday = AppState.sundays.find(s => new Date(s + "T00:00:00") >= today);
-            if (nextSunday && dateKey === nextSunday) badge = 'next';
+            // Find the next sunday across ALL months of the year
+            let nextSundayGlobal = null;
+            for (let m = 0; m < 12; m++) {
+                const found = getSundays(m).find(s => s >= todayISO);
+                if (found) { nextSundayGlobal = found; break; }
+            }
+            if (nextSundayGlobal && dateKey === nextSundayGlobal) badge = 'next';
         }
 
         document.getElementById('exportBtn').classList.toggle('hidden', AppState.viewMode !== 'view');
@@ -1116,13 +1234,16 @@
     function ensureData(dateKey) {
         const d = AppState.monthData[dateKey];
         if (!d || typeof d !== 'object') {
-            AppState.monthData[dateKey] = { musicians: [], songs: [], notes: '' };
+            AppState.monthData[dateKey] = { musicians: [], songs: [], notes: '', danza: { active: false, songs: [] } };
             return;
         }
         if (!Array.isArray(d.musicians)) d.musicians = [];
         if (!Array.isArray(d.songs))    d.songs = [];
         if (typeof d.notes !== 'string') d.notes = '';
         // Migrate old string format → new object format {name, roles:[]}
+        if (typeof d.danza !== 'object' || d.danza === null) d.danza = { active: false, songs: [] };
+        if (typeof d.danza.active !== 'boolean') d.danza.active = false;
+        if (!Array.isArray(d.danza.songs)) d.danza.songs = [];
         d.musicians = d.musicians.map(m => {
             if (typeof m === 'string') {
                 // Parse "Kevin (guitarra)" → {name:"Kevin", roles:["guitarra"]}
@@ -1149,17 +1270,23 @@
     function renderView(data, dayNum, monthLabel, badge) {
         const musiciansHTML = data.musicians.map(m => `<span class="tag">${musicianLabel(m)}</span>`).join('');
 
+        const danzaActive = data.danza && data.danza.active;
+        const danzaSongs = danzaActive && data.danza.songs ? data.danza.songs : [];
         const songsHTML = data.songs.length
-            ? data.songs.map((s, i) => `
-                <div class="song-item">
+            ? data.songs.map((s, i) => {
+                const hasDanza = danzaSongs.includes(i);
+                return `<div class="song-item">
                     <span class="song-num">${i + 1}</span>
                     <span class="song-name">${s || '—'}</span>
-                </div>`).join('')
+                    ${hasDanza ? `<span class="danza-icon" title="Acompañada por Danza"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M18.5 8.5c-1.5 1-3.5 1.5-6.5 1.5s-5-0.5-6.5-1.5"/><path d="M6 10.5c-.5 2-.5 4 0 6.5l1 3h10l1-3c.5-2.5.5-4.5 0-6.5"/><path d="M9 13l-1.5 4M15 13l1.5 4"/></svg></span>` : ''}
+                </div>`;
+            }).join('')
             : `<div class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                 <span class="empty-label">Sin canciones</span>
                 <span class="empty-hint">Agregá canciones en modo edición</span>
             </div>`;
+        const danzaBanner = danzaActive ? `<div class="danza-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/><path d="M18.5 8.5c-1.5 1-3.5 1.5-6.5 1.5s-5-0.5-6.5-1.5"/><path d="M6 10.5c-.5 2-.5 4 0 6.5l1 3h10l1-3c.5-2.5.5-4.5 0-6.5"/><path d="M9 13l-1.5 4M15 13l1.5 4"/></svg>Este domingo el equipo de Danza estará presente</div>` : '';
 
         const notesHTML = data.notes
             ? `<div class="notes-text">${formatNotes(data.notes)}</div>`
@@ -1190,6 +1317,7 @@
                     <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
                 </div>
                 ${songsHTML}
+                ${danzaBanner}
             </div>
             <div class="card card-amber">
                 <div class="card-header">
@@ -1261,6 +1389,29 @@
                 <div class="edit-list" id="list-songs" data-type="songs">${songsRows}</div>
             </div>
 
+            <!-- DANZA -->
+            <div class="card card-emerald" style="margin-bottom:16px" id="danzaCard">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-emerald"></div><span>Danza</span></div>
+                    <label class="danza-toggle" id="danzaToggle">
+                        <input type="checkbox" id="danzaCheck" ${data.danza && data.danza.active ? 'checked' : ''}>
+                        <span class="danza-toggle-track"><span class="danza-toggle-thumb"></span></span>
+                        <span class="danza-toggle-label">${data.danza && data.danza.active ? 'Presente' : 'No presente'}</span>
+                    </label>
+                </div>
+                ${data.danza && data.danza.active ? `
+                <div class="danza-songs-list" id="danzaSongsList">
+                    ${data.songs.length ? `<p class="danza-hint">Seleccioná las canciones que acompañará:</p>
+                    ${data.songs.map((s, i) => {
+                        const checked = data.danza.songs && data.danza.songs.includes(i);
+                        return `<label class="danza-song-row ${checked ? 'selected' : ''}" data-song-idx="${i}">
+                            <div class="check-box"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg></div>
+                            <span>${s || '—'}</span>
+                        </label>`;
+                    }).join('')}` : '<p class="danza-hint">Primero agregá canciones en la sección de arriba.</p>'}
+                </div>` : ''}
+            </div>
+
             <!-- NOTAS -->
             <div class="card card-amber" style="margin-bottom:0">
                 <div class="card-header">
@@ -1329,6 +1480,39 @@
 
         // Add song
         document.getElementById('add-songs').addEventListener('click', () => addItem('songs'));
+
+        // Danza toggle
+        const danzaCheck = document.getElementById('danzaCheck');
+        if (danzaCheck) {
+            danzaCheck.addEventListener('change', () => {
+                const dateKey = AppState.sundays[AppState.activeIdx];
+                AppState.monthData[dateKey].danza.active = danzaCheck.checked;
+                if (!danzaCheck.checked) AppState.monthData[dateKey].danza.songs = [];
+                render();
+                bindEditEvents();
+                debouncedSave();
+            });
+        }
+
+        // Danza song selection
+        const danzaList = document.getElementById('danzaSongsList');
+        if (danzaList) {
+            danzaList.addEventListener('click', (e) => {
+                const row = e.target.closest('.danza-song-row');
+                if (!row) return;
+                const idx = parseInt(row.dataset.songIdx);
+                const dateKey = AppState.sundays[AppState.activeIdx];
+                const danza = AppState.monthData[dateKey].danza;
+                const pos = danza.songs.indexOf(idx);
+                if (pos === -1) danza.songs.push(idx);
+                else danza.songs.splice(pos, 1);
+                row.classList.toggle('selected', danza.songs.includes(idx));
+                row.querySelector('.check-box').querySelector('svg').style.color = danza.songs.includes(idx) ? '#0a0a0f' : 'transparent';
+                row.querySelector('.check-box').style.background = danza.songs.includes(idx) ? 'var(--accent-emerald)' : '';
+                row.querySelector('.check-box').style.borderColor = danza.songs.includes(idx) ? 'var(--accent-emerald)' : '';
+                debouncedSave();
+            });
+        }
 
         // Delete with confirm-on-second-tap
         let pendingDel = null;
