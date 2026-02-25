@@ -460,38 +460,7 @@
         .musicians-grid::-webkit-scrollbar-track { background: transparent; }
         .musicians-grid::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
 
-        .musician-check {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .musician-check:hover { border-color: var(--border-bright); }
-        .musician-check.selected {
-            border-color: var(--accent-cyan);
-            background: rgba(34,211,238,0.06);
-        }
-        .musician-check input[type=checkbox] { display: none; }
-        .check-box {
-            width: 18px; height: 18px;
-            border: 1.5px solid var(--border-bright);
-            border-radius: 5px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-            transition: all 0.15s;
-        }
-        .musician-check.selected .check-box {
-            background: var(--accent-cyan);
-            border-color: var(--accent-cyan);
-        }
-        .check-box svg { width: 11px; height: 11px; color: #0a0a0f; display: none; }
-        .musician-check.selected .check-box svg { display: block; }
-        .musician-name { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+
 
 
         /* Edit list items */
@@ -742,15 +711,10 @@
 
         @media (max-width: 380px) {
             .musicians-grid {
-                grid-template-columns: 1fr;
-                max-height: 280px;
-            }
-            .musician-check {
-                padding: 8px 12px;
-                gap: 8px;
+                max-height: none;
             }
             .musician-name { font-size: 13px; }
-            .check-box { width: 16px; height: 16px; }
+            .role-chip { font-size: 11px; padding: 3px 10px; }
         }
     </style>
 </head>
@@ -851,13 +815,27 @@
         isSaving: false,
         appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
         user: null,
-        musiciansList: [
-            "Kevin (dirección/voz)", "Norma (dirección/voz)", "Nataly (dirección/voz)",
-            "Gabriel (batería)", "Anderson (batería)", "David (bajo)", "Lore (teclado/bajo)",
-            "Magali (teclado)", "Thiago (teclado)", "Pame (proyección)", "Nico (proyección)",
-            "Sonia (proyección)", "Emma (guitarra)", "Kevin (guitarra)", "Pedro (sonido)",
-            "Cristian (sonido)", "Nestor (sonido)", "Ari (voz apoyo)", "Fernando (voz apoyo)",
-            "Meli (voz apoyo)", "Iara (voz apoyo)"
+        musiciansConfig: [
+            { name: "Kevin",    roles: ["dirección", "voz apoyo", "guitarra", "bajo", "teclado", "batería", "sonido", "proyección"] },
+            { name: "Norma",    roles: ["dirección", "voz apoyo"] },
+            { name: "Nataly",   roles: ["dirección", "voz apoyo"] },
+            { name: "Gabriel",  roles: ["batería"] },
+            { name: "Anderson", roles: ["batería", "proyección"] },
+            { name: "David",    roles: ["bajo"] },
+            { name: "Lore",     roles: ["teclado", "bajo"] },
+            { name: "Magali",   roles: ["teclado"] },
+            { name: "Thiago",   roles: ["teclado"] },
+            { name: "Pame",     roles: ["proyección", "batería"] },
+            { name: "Nico",     roles: ["proyección"] },
+            { name: "Sonia",    roles: ["proyección"] },
+            { name: "Emma",     roles: ["guitarra", "bajo"] },
+            { name: "Pedro",    roles: ["sonido"] },
+            { name: "Cristian", roles: ["sonido"] },
+            { name: "Nestor",   roles: ["sonido"] },
+            { name: "Ari",      roles: ["voz apoyo"] },
+            { name: "Fernando", roles: ["voz apoyo"] },
+            { name: "Meli",     roles: ["voz apoyo"] },
+            { name: "Iara",     roles: ["voz apoyo"] }
         ]
     };
 
@@ -1049,17 +1027,35 @@
             AppState.monthData[dateKey] = { musicians: [], songs: [], notes: '' };
             return;
         }
-        // Patch any missing or corrupt individual fields
         if (!Array.isArray(d.musicians)) d.musicians = [];
         if (!Array.isArray(d.songs))    d.songs = [];
         if (typeof d.notes !== 'string') d.notes = '';
-        // Sanitize array entries — must be strings
-        d.musicians = d.musicians.filter(m => typeof m === 'string');
-        d.songs     = d.songs.map(s => (typeof s === 'string' ? s : ''));
+        // Migrate old string format → new object format {name, roles:[]}
+        d.musicians = d.musicians.map(m => {
+            if (typeof m === 'string') {
+                // Parse "Kevin (guitarra)" → {name:"Kevin", roles:["guitarra"]}
+                const match = m.match(/^(.+?)\s*\((.+)\)$/);
+                if (match) return { name: match[1].trim(), roles: match[2].split('/').map(r => r.trim()) };
+                return { name: m, roles: [] };
+            }
+            if (typeof m === 'object' && m.name) {
+                if (!Array.isArray(m.roles)) m.roles = [];
+                return m;
+            }
+            return null;
+        }).filter(Boolean);
+        d.songs = d.songs.map(s => (typeof s === 'string' ? s : ''));
+    }
+
+    // Helper: get display label for a musician object
+    function musicianLabel(m) {
+        if (!m || !m.name) return '';
+        if (!m.roles || m.roles.length === 0) return m.name;
+        return `${m.name} (${m.roles.join(' / ')})`;
     }
 
     function renderView(data, dayNum, monthLabel, badge) {
-        const musiciansHTML = data.musicians.map(m => `<span class="tag">${m}</span>`).join('');
+        const musiciansHTML = data.musicians.map(m => `<span class="tag">${musicianLabel(m)}</span>`).join('');
 
         const songsHTML = data.songs.length
             ? data.songs.map((s, i) => `
@@ -1113,18 +1109,31 @@
     }
 
     function renderEdit(data, dayNum, monthLabel, badge) {
-        // Musicians checkboxes
-        const musicianRows = AppState.musiciansList.map(m => {
-            const sel = data.musicians.includes(m) ? 'selected' : '';
-            return `<label class="musician-check ${sel}">
-                <input type="checkbox" data-musician="${m}" data-field="musicians" ${sel ? 'checked' : ''}>
-                <div class="check-box">
-                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path d="M2 6l3 3 5-5"/>
-                    </svg>
+        // Musicians — new role-aware rows
+        const musicianRows = AppState.musiciansConfig.map(cfg => {
+            const existing = data.musicians.find(m => m.name === cfg.name);
+            const isSelected = !!existing;
+            const selectedRoles = existing ? existing.roles : [];
+            const hasMultipleRoles = cfg.roles.length > 1;
+
+            const roleChips = hasMultipleRoles ? cfg.roles.map(role => {
+                const active = selectedRoles.includes(role) ? 'role-active' : '';
+                return `<span class="role-chip ${active}" data-musician="${cfg.name}" data-role="${role}">${role}</span>`;
+            }).join('') : '';
+
+            return `<div class="musician-row ${isSelected ? 'selected' : ''}" data-musician="${cfg.name}">
+                <div class="musician-main">
+                    <div class="check-box">
+                        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M2 6l3 3 5-5"/>
+                        </svg>
+                    </div>
+                    <span class="musician-name">${cfg.name}</span>
+                    ${hasMultipleRoles ? '' : `<span class="musician-single-role">${cfg.roles[0]}</span>`}
                 </div>
-                <span class="musician-name">${m}</span>
-            </label>`;
+                ${hasMultipleRoles && isSelected ? `<div class="role-chips">${roleChips}</div>` : ''}
+                ${hasMultipleRoles && !isSelected ? `<div class="role-chips role-chips-hidden">${roleChips}</div>` : ''}
+            </div>`;
         }).join('');
 
         const songsRows = data.songs.map((s, i) => `
@@ -1177,17 +1186,52 @@
     }
 
     function bindEditEvents() {
-        // Musician checkboxes — click on label
+        // Musicians — click on row to toggle, click on role chip to toggle role
         document.getElementById('musiciansGrid').addEventListener('click', (e) => {
-            const label = e.target.closest('.musician-check');
-            if (!label) return;
-            const cb = label.querySelector('input[type=checkbox]');
-            cb.checked = !cb.checked;
-            label.classList.toggle('selected', cb.checked);
-            const checkboxes = document.querySelectorAll('input[data-field="musicians"]');
-            const selected = Array.from(checkboxes).filter(c => c.checked).map(c => c.dataset.musician);
             const dateKey = AppState.sundays[AppState.activeIdx];
-            AppState.monthData[dateKey].musicians = selected;
+            const musicians = AppState.monthData[dateKey].musicians;
+
+            // Role chip click
+            const chip = e.target.closest('.role-chip');
+            if (chip) {
+                e.stopPropagation();
+                const name = chip.dataset.musician;
+                const role = chip.dataset.role;
+                const m = musicians.find(x => x.name === name);
+                if (!m) return;
+                const idx = m.roles.indexOf(role);
+                if (idx === -1) m.roles.push(role);
+                else m.roles.splice(idx, 1);
+                chip.classList.toggle('role-active', m.roles.includes(role));
+                debouncedSave();
+                return;
+            }
+
+            // Row click — toggle musician on/off
+            const row = e.target.closest('.musician-row');
+            if (!row) return;
+            const name = row.dataset.musician;
+            const cfg = AppState.musiciansConfig.find(c => c.name === name);
+            const existingIdx = musicians.findIndex(x => x.name === name);
+
+            if (existingIdx !== -1) {
+                // Deselect
+                musicians.splice(existingIdx, 1);
+                row.classList.remove('selected');
+                const chips = row.querySelector('.role-chips');
+                if (chips) chips.classList.add('role-chips-hidden');
+            } else {
+                // Select — auto-assign default role (first one if single, none if multiple)
+                const defaultRoles = cfg.roles.length === 1 ? [cfg.roles[0]] : [];
+                musicians.push({ name, roles: defaultRoles });
+                row.classList.add('selected');
+                const chips = row.querySelector('.role-chips');
+                if (chips) {
+                    chips.classList.remove('role-chips-hidden');
+                    // Reset all chips to inactive
+                    chips.querySelectorAll('.role-chip').forEach(c => c.classList.remove('role-active'));
+                }
+            }
             debouncedSave();
         });
 
