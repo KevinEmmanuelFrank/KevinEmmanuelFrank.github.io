@@ -393,33 +393,45 @@
         .song-item:last-child { border-bottom: none; }
         .song-num {
             font-family: 'Instrument Serif', serif;
-            font-size: 22px;
+            font-size: 20px;
             font-style: italic;
             color: var(--accent-purple);
-            width: 28px;
+            width: 24px;
             text-align: right;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        .song-divider {
+            width: 1px;
+            height: 18px;
+            background: var(--border-bright);
             flex-shrink: 0;
         }
         .song-name {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 500;
             color: var(--text-primary);
+            flex: 1;
         }
 
         /* Notes */
         .notes-text {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 400;
-            color: var(--text-primary);
-            line-height: 1.75;
+            color: var(--text-secondary);
+            line-height: 2;
             white-space: pre-wrap;
+            font-family: 'DM Sans', sans-serif;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent,
+                transparent calc(2em - 1px),
+                rgba(251,191,36,0.07) calc(2em - 1px),
+                rgba(251,191,36,0.07) 2em
+            );
+            padding: 4px 0;
         }
-        .notes-text strong { font-weight: 700; color: var(--text-primary); }
-        .notes-divider {
-            border: none;
-            border-top: 1px solid var(--border-bright);
-            margin: 14px 0;
-        }
+
 
         .empty-state {
             text-align: center;
@@ -466,14 +478,22 @@
         .musicians-grid {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            max-height: 340px;
-            overflow-y: auto;
-            padding-right: 4px;
+            gap: 0;
         }
-        .musicians-grid::-webkit-scrollbar { width: 4px; }
-        .musicians-grid::-webkit-scrollbar-track { background: transparent; }
-        .musicians-grid::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+        .musician-category {
+            margin-bottom: 14px;
+        }
+        .musician-category:last-child { margin-bottom: 0; }
+        .musician-category-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 4px 6px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 6px;
+        }
 
         /* ── MUSICIAN ROWS ── */
         .musician-row {
@@ -627,6 +647,17 @@
             100% { color: var(--text-muted); transform: scale(1); }
         }
         .drag-handle.hint { animation: handlePulse 0.9s ease forwards; }
+        .edit-song-num {
+            font-family: 'Instrument Serif', serif;
+            font-size: 18px;
+            font-style: italic;
+            color: var(--accent-purple);
+            opacity: 0.6;
+            width: 20px;
+            text-align: right;
+            flex-shrink: 0;
+            user-select: none;
+        }
         .edit-input {
             flex: 1;
             background: transparent;
@@ -658,22 +689,30 @@
         /* Notes textarea */
         .notes-textarea {
             width: 100%;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            background: transparent;
+            border: none;
+            border-top: 1px solid rgba(251,191,36,0.15);
+            border-radius: 0;
             color: var(--text-primary);
             font-family: 'DM Sans', sans-serif;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 400;
-            line-height: 1.75;
-            padding: 16px;
-            resize: vertical;
-            min-height: 140px;
+            line-height: 2;
+            padding: 14px 4px 8px;
+            resize: none;
+            min-height: 160px;
             outline: none;
             transition: border-color 0.15s;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent,
+                transparent calc(2em - 1px),
+                rgba(251,191,36,0.06) calc(2em - 1px),
+                rgba(251,191,36,0.06) 2em
+            );
         }
-        .notes-textarea:focus { border-color: var(--accent-amber); }
-        .notes-textarea::placeholder { color: var(--text-muted); }
+        .notes-textarea:focus { border-top-color: rgba(251,191,36,0.4); }
+        .notes-textarea::placeholder { color: var(--text-muted); opacity: 0.6; }
 
         /* Save row */
         .save-row {
@@ -895,6 +934,32 @@
             margin-top: -4px;
         }
 
+        /* Songs empty state in edit mode */
+        .songs-empty-edit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 28px 0 12px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .songs-empty-edit svg {
+            width: 32px; height: 32px;
+            opacity: 0.3;
+        }
+        .songs-empty-edit span {
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0.7;
+        }
+        .songs-empty-edit strong {
+            font-family: monospace;
+            font-size: 16px;
+            color: var(--accent-purple);
+            opacity: 1;
+        }
+
         /* Drag styles */
         .dragging { opacity: 0.4; }
         .drag-over { border-color: var(--accent-cyan) !important; background: rgba(34,211,238,0.06); }
@@ -904,6 +969,8 @@
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideInItem { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+        .song-new { animation: slideInItem 0.25s ease forwards; }
 
         /* Loading */
         .loading-state {
@@ -1208,12 +1275,7 @@
     function formatNotes(text) {
         return text
             .split('\n')
-            .map(line => {
-                if (line.trim() === '---') return '<hr class="notes-divider">';
-                // Bold: **text**
-                line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-                return line;
-            })
+            .map(line => line)
             .join('\n');
     }
 
@@ -1303,6 +1365,7 @@
                 const hasDanza = danzaSongs.includes(i);
                 return `<div class="song-item">
                     <span class="song-num">${i + 1}</span>
+                    <span class="song-divider"></span>
                     <span class="song-name">${s || '—'}</span>
                     ${hasDanza ? `<span class="danza-icon" title="Acompañada por Worshipers"><span class="dot dot-emerald" style="width:8px;height:8px;flex-shrink:0;"></span></span>` : ''}
                 </div>`;
@@ -1355,24 +1418,27 @@
     }
 
     function renderEdit(data, dayNum, monthLabel, badge) {
-        // Musicians — new role-aware rows
-        const musicianRows = AppState.musiciansConfig.map(cfg => {
+        // Musicians — grouped by category
+        const categories = [
+            { label: 'Dirección', roles: ['dirección'] },
+            { label: 'Voces', roles: ['voz apoyo'] },
+            { label: 'Instrumentos', roles: ['guitarra', 'bajo', 'teclado', 'batería'] },
+            { label: 'Sonido & Proyección', roles: ['sonido', 'proyección'] },
+        ];
+
+        function renderMusicianRow(cfg) {
             const existing = data.musicians.find(m => m.name === cfg.name);
             const isSelected = !!existing;
             const selectedRoles = existing ? existing.roles : [];
             const hasMultipleRoles = cfg.roles.length > 1;
-
             const roleChips = hasMultipleRoles ? cfg.roles.map(role => {
                 const active = selectedRoles.includes(role) ? 'role-active' : '';
                 return `<span class="role-chip ${active}" data-musician="${cfg.name}" data-role="${role}">${role}</span>`;
             }).join('') : '';
-
             return `<div class="musician-row ${isSelected ? 'selected' : ''}" data-musician="${cfg.name}">
                 <div class="musician-main">
                     <div class="check-box">
-                        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M2 6l3 3 5-5"/>
-                        </svg>
+                        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>
                     </div>
                     <span class="musician-name">${cfg.name}</span>
                     ${hasMultipleRoles ? '' : `<span class="musician-single-role">${cfg.roles[0]}</span>`}
@@ -1380,11 +1446,23 @@
                 ${hasMultipleRoles && isSelected ? `<div class="role-chips">${roleChips}</div>` : ''}
                 ${hasMultipleRoles && !isSelected ? `<div class="role-chips role-chips-hidden">${roleChips}</div>` : ''}
             </div>`;
+        }
+
+        const musicianRows = categories.map(cat => {
+            const members = AppState.musiciansConfig.filter(cfg =>
+                cfg.roles.some(r => cat.roles.includes(r))
+            );
+            if (!members.length) return '';
+            return `<div class="musician-category">
+                <div class="musician-category-label">${cat.label}</div>
+                ${members.map(renderMusicianRow).join('')}
+            </div>`;
         }).join('');
 
         const songsRows = data.songs.map((s, i) => `
             <div class="edit-item" draggable="true" data-index="${i}">
                 <span class="drag-handle">⠿</span>
+                <span class="edit-song-num">${i + 1}</span>
                 <input type="text" class="edit-input" value="${s}" data-idx="${i}" data-field="songs" placeholder="Ej: Cuán grande es Él">
                 <button class="del-btn" data-del-type="songs" data-del-idx="${i}">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1412,7 +1490,12 @@
                     <div class="card-title"><div class="dot dot-purple"></div><span>Canciones</span></div>
                     <button class="add-btn" id="add-songs" ${data.songs.length >= 12 ? 'disabled title="Máximo 12 canciones"' : ''}>+</button>
                 </div>
-                <div class="edit-list" id="list-songs" data-type="songs">${songsRows}</div>
+                <div class="edit-list" id="list-songs" data-type="songs">
+                    ${songsRows || `<div class="songs-empty-edit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        <span>Tocá <strong>+</strong> para agregar una canción</span>
+                    </div>`}
+                </div>
             </div>
 
             <!-- DANZA -->
@@ -1440,12 +1523,12 @@
             </div>
 
             <!-- NOTAS -->
-            <div class="card card-amber" style="margin-bottom:0">
-                <div class="card-header">
+            <div class="card card-amber" style="margin-bottom:0; padding-bottom:16px;">
+                <div class="card-header" style="margin-bottom:0;">
                     <div class="card-title"><div class="dot dot-amber"></div><span>Notas</span></div>
                 </div>
                 <textarea class="notes-textarea" data-field="notes" data-idx="0"
-                    placeholder="Anotaciones para este domingo… (**negrita**, --- para separar secciones)">${data.notes || ''}</textarea>
+                    placeholder="Escribí las anotaciones para este domingo…">${data.notes || ''}</textarea>
             </div>
 
             <div class="save-row">
@@ -1491,15 +1574,17 @@
                 const chips = row.querySelector('.role-chips');
                 if (chips) chips.classList.add('role-chips-hidden');
             } else {
-                // Select — auto-assign default role (first one if single, none if multiple)
-                const defaultRoles = cfg.roles.length === 1 ? [cfg.roles[0]] : [];
+                // Select — auto-assign first role always as default
+                const defaultRoles = [cfg.roles[0]];
                 musicians.push({ name, roles: defaultRoles });
                 row.classList.add('selected');
                 const chips = row.querySelector('.role-chips');
                 if (chips) {
                     chips.classList.remove('role-chips-hidden');
-                    // Reset all chips to inactive
-                    chips.querySelectorAll('.role-chip').forEach(c => c.classList.remove('role-active'));
+                    // Mark first chip as active by default
+                    chips.querySelectorAll('.role-chip').forEach((c, i) => {
+                        c.classList.toggle('role-active', i === 0);
+                    });
                 }
             }
             debouncedSave();
@@ -1630,6 +1715,9 @@
             const dateKey = AppState.sundays[AppState.activeIdx];
             if (field === 'notes') {
                 AppState.monthData[dateKey].notes = e.target.value;
+                // Auto-resize
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
             } else {
                 const idx = parseInt(e.target.dataset.idx);
                 AppState.monthData[dateKey][field][idx] = e.target.value;
@@ -1737,9 +1825,14 @@
         if (type === 'songs' && AppState.monthData[dateKey].songs.length >= SONG_LIMIT) return;
         AppState.monthData[dateKey][type].push('');
         render();
-        // Focus last input
+        // Animate and focus last input
         const inputs = document.querySelectorAll(`[data-field="${type}"]`);
-        if (inputs.length) inputs[inputs.length - 1].focus();
+        if (inputs.length) {
+            const lastInput = inputs[inputs.length - 1];
+            const lastItem = lastInput.closest('.edit-item');
+            if (lastItem) lastItem.classList.add('song-new');
+            lastInput.focus();
+        }
         debouncedSave();
     }
 
