@@ -669,6 +669,7 @@
 
         /* Animations */
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 
@@ -1034,7 +1035,7 @@
             : '<div class="empty-state">Sin notas</div>';
 
         return `<div class="fade-in">
-            <div style="text-align:center; margin-bottom:28px;">
+            <div style="text-align:center; margin-bottom:28px;" class="no-export">
                 <div style="font-family:'Instrument Serif',serif; font-size:88px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
                 <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} ${YEAR}</div>
                 ${badge === 'next' ? '<div class="date-badge next no-export"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past no-export"><span class="badge-dot"></span>Pasado</div>' : ''}
@@ -1381,8 +1382,8 @@
         const nav = document.querySelector('.nav');
         const footer = document.querySelector('.footer');
         const els = [header, nav, footer];
-        const hide = () => { els.forEach(el => el.style.display = 'none'); document.querySelectorAll('.no-export').forEach(el => el.style.visibility = 'hidden'); };
-        const show = () => { els.forEach(el => el.style.display = ''); document.querySelectorAll('.no-export').forEach(el => el.style.visibility = ''); };
+        const hide = () => { els.forEach(el => el.style.display = 'none'); document.querySelectorAll('.no-export').forEach(el => el.style.display = 'none'); };
+        const show = () => { els.forEach(el => el.style.display = ''); document.querySelectorAll('.no-export').forEach(el => el.style.display = ''); };
 
         // Datos de la fecha actual
         const dateKey = AppState.sundays[AppState.activeIdx];
@@ -1420,6 +1421,13 @@
             </div>
         `;
 
+        // Feedback visual: spinner en el botón
+        const exportBtn = document.getElementById('exportBtn');
+        const camIcon = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+        const spinIcon = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+        exportBtn.innerHTML = spinIcon;
+        exportBtn.disabled = true;
+
         try {
             if (!window.html2canvas) {
                 await new Promise((res, rej) => {
@@ -1432,11 +1440,16 @@
             hide();
             const content = document.getElementById('contentArea');
             content.prepend(exportHeader);
+            // Measure real content height after prepend (fixes mobile clipping)
+            const realHeight = content.offsetHeight;
+            const realWidth = content.offsetWidth;
             const canvas = await window.html2canvas(content, {
                 scale: 2, useCORS: true,
                 backgroundColor: '#0e1220',
-                width: content.scrollWidth,
-                height: content.scrollHeight
+                width: realWidth,
+                height: realHeight,
+                windowWidth: realWidth,
+                windowHeight: realHeight
             });
             exportHeader.remove();
             const link = document.createElement('a');
@@ -1445,10 +1458,12 @@
             link.click();
         } catch (error) {
             console.error(error);
-            alert('Error generando imagen.');
+            alert('Error generando imagen. Verificá tu conexión e intentá de nuevo.');
         } finally {
             if (document.getElementById('exportHeader')) exportHeader.remove();
             show();
+            exportBtn.innerHTML = camIcon;
+            exportBtn.disabled = false;
         }
     }
 
