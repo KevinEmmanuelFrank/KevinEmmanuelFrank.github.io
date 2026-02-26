@@ -480,20 +480,7 @@
             flex-direction: column;
             gap: 0;
         }
-        .musician-category {
-            margin-bottom: 14px;
-        }
-        .musician-category:last-child { margin-bottom: 0; }
-        .musician-category-label {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            padding: 0 4px 6px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 6px;
-        }
+
 
         /* ── MUSICIAN ROWS ── */
         .musician-row {
@@ -590,19 +577,20 @@
         .edit-item {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
             background: var(--bg-surface);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 4px 4px 4px 12px;
+            padding: 4px 4px 4px 8px;
             transition: border-color 0.15s;
+            min-width: 0;
         }
         .edit-item:hover { border-color: var(--border-bright); }
         .drag-handle {
             cursor: grab;
             color: var(--text-muted);
-            font-size: 16px;
-            padding: 4px;
+            font-size: 14px;
+            padding: 4px 2px;
             user-select: none;
             line-height: 1;
             flex-shrink: 0;
@@ -649,29 +637,30 @@
         .drag-handle.hint { animation: handlePulse 0.9s ease forwards; }
         .edit-song-num {
             font-family: 'Instrument Serif', serif;
-            font-size: 18px;
+            font-size: 16px;
             font-style: italic;
             color: var(--accent-purple);
             opacity: 0.6;
-            width: 20px;
+            width: 16px;
             text-align: right;
             flex-shrink: 0;
             user-select: none;
         }
         .edit-input {
             flex: 1;
+            min-width: 0;
             background: transparent;
             border: none;
             outline: none;
             color: var(--text-primary);
             font-family: 'DM Sans', sans-serif;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 500;
             padding: 10px 4px;
         }
-        .edit-input::placeholder { color: var(--text-muted); }
+        .edit-input::placeholder { color: var(--text-muted); font-size: 13px; }
         .del-btn {
-            width: 36px; height: 36px;
+            width: 32px; height: 32px;
             background: transparent;
             border: none;
             border-radius: 8px;
@@ -1418,15 +1407,8 @@
     }
 
     function renderEdit(data, dayNum, monthLabel, badge) {
-        // Musicians — grouped by category
-        const categories = [
-            { label: 'Dirección', roles: ['dirección'] },
-            { label: 'Voces', roles: ['voz apoyo'] },
-            { label: 'Instrumentos', roles: ['guitarra', 'bajo', 'teclado', 'batería'] },
-            { label: 'Sonido & Proyección', roles: ['sonido', 'proyección'] },
-        ];
-
-        function renderMusicianRow(cfg) {
+        // Musicians — flat list
+        const musicianRows = AppState.musiciansConfig.map(cfg => {
             const existing = data.musicians.find(m => m.name === cfg.name);
             const isSelected = !!existing;
             const selectedRoles = existing ? existing.roles : [];
@@ -1445,17 +1427,6 @@
                 </div>
                 ${hasMultipleRoles && isSelected ? `<div class="role-chips">${roleChips}</div>` : ''}
                 ${hasMultipleRoles && !isSelected ? `<div class="role-chips role-chips-hidden">${roleChips}</div>` : ''}
-            </div>`;
-        }
-
-        const musicianRows = categories.map(cat => {
-            const members = AppState.musiciansConfig.filter(cfg =>
-                cfg.roles.some(r => cat.roles.includes(r))
-            );
-            if (!members.length) return '';
-            return `<div class="musician-category">
-                <div class="musician-category-label">${cat.label}</div>
-                ${members.map(renderMusicianRow).join('')}
             </div>`;
         }).join('');
 
