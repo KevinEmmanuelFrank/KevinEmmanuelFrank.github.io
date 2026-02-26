@@ -1298,10 +1298,11 @@
 
         // Buscar el próximo domingo a partir de hoy, avanzando meses si hace falta
         let month = hoy.getMonth();
+        let year = hoy.getFullYear();  // BUG E FIX: track year when wrapping December→January
         let attempts = 0;
 
         while (attempts < 12) {
-            const sundays = getSundays(month);
+            const sundays = getSundays(month, year);
             const idx = sundays.findIndex(s => s >= hoyISO);
 
             if (idx !== -1) {
@@ -1312,7 +1313,8 @@
             }
 
             // Este mes ya no tiene domingos futuros → avanzar
-            month = (month + 1) % 12;
+            month++;
+            if (month > 11) { month = 0; year++; }  // BUG E FIX: increment year when crossing December
             attempts++;
         }
 
@@ -1325,8 +1327,10 @@
         document.getElementById('monthSelect').value = AppState.currentMonth;
     }
 
-    function getSundays(month) {
-        const date = new Date(getYear(), month, 1);  // BUG 4 FIX: dynamic year
+    function getSundays(month, year) {
+        // BUG E FIX: accept explicit year so December→January wrap uses the correct next year
+        const y = (year !== undefined) ? year : getYear();
+        const date = new Date(y, month, 1);
         const found = [];
         while (date.getMonth() === month) {
             if (date.getDay() === 0) found.push(new Date(date).toISOString().split('T')[0]);
@@ -1342,8 +1346,11 @@
                 clearTimeout(saveTimeout);
                 saveTimeout = null;
                 // sendBeacon is fire-and-forget but survives page unload
-                const monthKey = `${new Date().getFullYear()}-${AppState.currentMonth}`;
+                const monthKey = `${getYear()}-${AppState.currentMonth}`;  // BUG A FIX: use getYear() consistently
                 const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/artifacts/${AppState.appId}/public/data/months/${monthKey}`;
+                // BUG B FIX: actually invoke sendBeacon so data is sent reliably on page close
+                const payload = JSON.stringify(AppState.monthData[AppState.sundays[AppState.activeIdx]] || {});
+                if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
                 // Fallback: also call save() — some browsers honour async in beforeunload briefly
                 save();
             }
@@ -1450,7 +1457,7 @@
         if (!Array.isArray(d.musicians)) d.musicians = [];
         if (!Array.isArray(d.songs))    d.songs = [];
         if (typeof d.notes !== 'string') d.notes = '';
-        // Migrate old string format → new object format {name, roles:[]}
+        // BUG C FIX: always ensure danza exists even on partial/legacy objects from Firestore
         if (typeof d.danza !== 'object' || d.danza === null) d.danza = { active: false, songs: [] };
         if (typeof d.danza.active !== 'boolean') d.danza.active = false;
         if (!Array.isArray(d.danza.songs)) d.danza.songs = [];
