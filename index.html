@@ -307,6 +307,38 @@
             margin-top: 4px;
         }
 
+        /* View date hero */
+        .view-date-hero {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .view-day-num {
+            font-family: 'Instrument Serif', serif;
+            font-size: 88px;
+            font-weight: 400;
+            font-style: italic;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .view-month-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+        .view-date-rule {
+            margin: 20px auto 0;
+            height: 1px;
+            width: 80%;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), var(--accent-purple), transparent);
+            opacity: 0.4;
+        }
+
         /* Cards */
         .card {
             background: var(--bg-card);
@@ -1012,7 +1044,7 @@
             .main { padding: 20px 16px; }
             .footer { padding: 14px 20px; gap: 6px; }
             .musicians-grid { grid-template-columns: 1fr 1fr; }
-            .view-date-header .big-day { font-size: 88px; }
+            .view-day-num { font-size: 64px; }
             .edit-date-num { font-size: 60px !important; }
         }
 
@@ -1407,10 +1439,11 @@
 
         const pastClass = badge === 'past' ? ' view-past' : '';
         return `<div class="fade-in${pastClass}">
-            <div style="text-align:center; margin-bottom:28px;" class="no-export">
-                <div style="font-family:'Instrument Serif',serif; font-size:88px; font-weight:400; font-style:italic; line-height:1; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">${dayNum}</div>
-                <div style="font-size:11px; font-weight:700; letter-spacing:0.35em; text-transform:uppercase; color:var(--text-secondary); margin-top:6px;">${monthLabel} ${YEAR}</div>
+            <div class="view-date-hero no-export">
+                <div class="view-day-num">${dayNum}</div>
+                <div class="view-month-label">${monthLabel} ${YEAR}</div>
                 ${badge === 'next' ? '<div class="date-badge next no-export"><span class="badge-dot"></span>Próximo</div>' : badge === 'past' ? '<div class="date-badge past no-export"><span class="badge-dot"></span>Pasado</div>' : ''}
+                <div class="view-date-rule"></div>
             </div>
             <div class="card card-cyan">
                 <div class="card-header">
