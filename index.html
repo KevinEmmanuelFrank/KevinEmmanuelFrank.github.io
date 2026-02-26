@@ -779,22 +779,21 @@
             font-weight: 700;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: var(--text-muted);
+            color: rgba(66,133,244,0.85);
             text-decoration: none;
             padding: 5px 12px;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(66,133,244,0.3);
             border-radius: 20px;
-            background: transparent;
+            background: rgba(66,133,244,0.06);
             transition: all 0.2s;
         }
         .footer-drive-btn:hover {
-            color: var(--text-primary);
-            border-color: var(--border-bright);
-            background: var(--bg-surface);
+            color: rgba(66,133,244,1);
+            border-color: rgba(66,133,244,0.6);
+            background: rgba(66,133,244,0.12);
         }
         .footer-drive-btn svg {
             width: 13px; height: 13px;
-            opacity: 0.7;
         }
 
         /* ── DATE BADGE ── */
@@ -1265,6 +1264,7 @@
         document.getElementById('toggleModeBtn').addEventListener('click', toggleMode);
         document.getElementById('monthSelect').addEventListener('change', changeMonth);
         document.getElementById('exportBtn').addEventListener('click', exportImage);
+        bindDeleteHandler();
     }
 
     function setupRealtimeListener() {
@@ -1655,36 +1655,42 @@
             cb.style.borderColor = isSelected ? 'var(--accent-emerald)' : '';
             debouncedSave();
         });
+    }
 
-        // Delete with confirm-on-second-tap
-        let pendingDel = null;
-        let pendingDelTimer = null;
-        const XIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
-        const CheckIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+    // ── Delete handler — registered ONCE per edit render ──────────────────────
+    function bindDeleteHandler() {
+        const XIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="pointer-events:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+        const CheckIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="pointer-events:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
 
-        document.getElementById('contentArea').addEventListener('click', (e) => {
+        document.body.addEventListener('click', (e) => {
             const delBtn = e.target.closest('[data-del-type]');
             if (delBtn) {
-                if (pendingDel === delBtn) {
-                    clearTimeout(pendingDelTimer);
-                    pendingDel = null;
+                e.stopPropagation();
+                if (delBtn.dataset.confirming === '1') {
+                    // Segundo clic: ejecutar
+                    clearTimeout(parseInt(delBtn.dataset.confirmTimer || 0));
                     removeItem(delBtn.dataset.delType, parseInt(delBtn.dataset.delIdx));
                 } else {
-                    if (pendingDel) {
-                        pendingDel.classList.remove('del-confirm');
-                        pendingDel.innerHTML = XIcon;
-                        clearTimeout(pendingDelTimer);
-                    }
-                    pendingDel = delBtn;
+                    // Primer clic: pedir confirmación
+                    // Resetear cualquier otro botón confirmando
+                    document.querySelectorAll('[data-confirming="1"]').forEach(b => {
+                        if (b !== delBtn) {
+                            b.dataset.confirming = '0';
+                            b.classList.remove('del-confirm');
+                            b.innerHTML = XIcon;
+                        }
+                    });
+                    delBtn.dataset.confirming = '1';
                     delBtn.classList.add('del-confirm');
                     delBtn.innerHTML = CheckIcon;
-                    pendingDelTimer = setTimeout(() => {
-                        if (pendingDel === delBtn) {
+                    const t = setTimeout(() => {
+                        if (delBtn.dataset.confirming === '1') {
+                            delBtn.dataset.confirming = '0';
                             delBtn.classList.remove('del-confirm');
                             delBtn.innerHTML = XIcon;
-                            pendingDel = null;
                         }
                     }, 2500);
+                    delBtn.dataset.confirmTimer = t;
                 }
                 return;
             }
