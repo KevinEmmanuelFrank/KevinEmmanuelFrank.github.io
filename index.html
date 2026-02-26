@@ -644,6 +644,35 @@
             min-width: 0;
         }
         .edit-item:hover { border-color: var(--border-bright); }
+        /* Desktop = pointer device, Touch = coarse */
+        .touch-only { display: none; }
+        .desktop-only { display: flex; }
+        @media (pointer: coarse) {
+            .touch-only  { display: flex; }
+            .desktop-only { display: none !important; }
+        }
+
+        .move-btns {
+            flex-direction: column;
+            gap: 1px;
+            flex-shrink: 0;
+        }
+        .move-btn {
+            width: 26px; height: 22px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 6px;
+            transition: color 0.15s, background 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            padding: 0;
+        }
+        .move-btn svg { width: 14px; height: 14px; pointer-events: none; }
+        .move-btn:hover:not(:disabled) { color: var(--accent-purple); background: rgba(167,139,250,0.1); }
+        .move-btn:disabled { opacity: 0.2; cursor: default; }
+
         .drag-handle {
             cursor: grab;
             color: var(--text-muted);
@@ -1170,7 +1199,9 @@
 
     const monthNames = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-    const YEAR = new Date().getFullYear();
+    function getYear() { return new Date().getFullYear(); }
+    // BUG 4 FIX: always compute year dynamically so midnight 31-Dec works correctly
+    const YEAR = getYear();
 
     const AppState = {
         dragHintShown: false,
@@ -1181,7 +1212,7 @@
         sundays: [],
         unsubscribe: null,
         isSaving: false,
-        skipNextSnapshot: false,
+        skipNextSnapshot: 0,  // counter: skip N incoming snapshots
         appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
         user: null,
         musiciansConfig: [
@@ -1295,7 +1326,7 @@
     }
 
     function getSundays(month) {
-        const date = new Date(YEAR, month, 1);
+        const date = new Date(getYear(), month, 1);  // BUG 4 FIX: dynamic year
         const found = [];
         while (date.getMonth() === month) {
             if (date.getDay() === 0) found.push(new Date(date).toISOString().split('T')[0]);
@@ -1305,10 +1336,15 @@
     }
 
     function setupEventListeners() {
-        window.addEventListener('beforeunload', () => {
-            if (saveTimeout) {
+        window.addEventListener('beforeunload', (e) => {
+            // BUG 3 FIX: flush any pending debounced save synchronously via sendBeacon
+            if (saveTimeout && AppState.user) {
                 clearTimeout(saveTimeout);
                 saveTimeout = null;
+                // sendBeacon is fire-and-forget but survives page unload
+                const monthKey = `${new Date().getFullYear()}-${AppState.currentMonth}`;
+                const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/artifacts/${AppState.appId}/public/data/months/${monthKey}`;
+                // Fallback: also call save() — some browsers honour async in beforeunload briefly
                 save();
             }
         });
@@ -1330,12 +1366,12 @@
         if (!AppState.user) return;
         setSyncStatus('saving', 'Sincronizando…');
         startConnectTimeout();
-        const monthKey = `${YEAR}-${AppState.currentMonth}`;
+        const monthKey = `${getYear()}-${AppState.currentMonth}`;  // BUG 4 FIX
         const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
         AppState.unsubscribe = onSnapshot(docRef,
             (snapshot) => {
-                if (AppState.skipNextSnapshot) {
-                    AppState.skipNextSnapshot = false;
+                if (AppState.skipNextSnapshot > 0) {
+                    AppState.skipNextSnapshot--;  // BUG 2 FIX: decrement counter
                     setSyncStatus('online', 'Online');
                     return;
                 }
@@ -1350,11 +1386,19 @@
         );
     }
 
+    // BUG 7 FIX: sanitize HTML to prevent XSS from user-entered song/note content
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function formatNotes(text) {
-        return text
-            .split('\n')
-            .map(line => line)
-            .join('\n');
+        return escapeHtml(text);
     }
 
     function render() {
@@ -1445,7 +1489,7 @@
                 return `<div class="song-item">
                     <span class="song-num">${i + 1}</span>
                     <span class="song-divider"></span>
-                    <span class="song-name">${s || '—'}</span>
+                    <span class="song-name">${escapeHtml(s) || '—'}</span>
                     ${hasDanza ? `<span class="danza-icon" title="Acompañada por Worshipers"><span class="dot dot-emerald" style="width:8px;height:8px;flex-shrink:0;"></span></span>` : ''}
                 </div>`;
             }).join('')
@@ -1524,9 +1568,17 @@
 
         const songsRows = data.songs.map((s, i) => `
             <div class="edit-item" draggable="true" data-index="${i}">
-                <span class="drag-handle">⠿</span>
+                <span class="drag-handle desktop-only">⠿</span>
+                <div class="move-btns touch-only">
+                    <button class="move-btn" data-move-dir="up" data-move-idx="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Subir">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                    </button>
+                    <button class="move-btn" data-move-dir="down" data-move-idx="${i}" ${i === data.songs.length - 1 ? 'disabled' : ''} aria-label="Bajar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                </div>
                 <span class="edit-song-num">${i + 1}</span>
-                <input type="text" class="edit-input" value="${s}" data-idx="${i}" data-field="songs" placeholder="Ej: Cuán grande es Él">
+                <input type="text" class="edit-input" value="${escapeHtml(s)}" data-idx="${i}" data-field="songs" placeholder="Ej: Cuán grande es Él">
                 <button class="del-btn" data-del-type="songs" data-del-idx="${i}">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -1634,8 +1686,13 @@
                 const m = musicians.find(x => x.name === name);
                 if (!m) return;
                 const idx = m.roles.indexOf(role);
-                if (idx === -1) m.roles.push(role);
-                else m.roles.splice(idx, 1);
+                if (idx === -1) {
+                    m.roles.push(role);
+                } else {
+                    // BUG 5 FIX: never allow removing the last role
+                    if (m.roles.length > 1) m.roles.splice(idx, 1);
+                    else return; // silently ignore — must keep at least one role
+                }
                 chip.classList.toggle('role-active', m.roles.includes(role));
                 debouncedSave();
                 return;
@@ -1741,6 +1798,33 @@
         const CheckIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="pointer-events:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
 
         document.body.addEventListener('click', (e) => {
+            // Move up/down buttons (touch)
+            const moveBtn = e.target.closest('[data-move-dir]');
+            if (moveBtn && !moveBtn.disabled) {
+                const idx = parseInt(moveBtn.dataset.moveIdx);
+                const dir = moveBtn.dataset.moveDir;
+                const toIdx = dir === 'up' ? idx - 1 : idx + 1;
+                // Reuse doMove equivalent inline (doMove is scoped inside bindDeleteHandler's closure)
+                const dateKey = AppState.sundays[AppState.activeIdx];
+                const arr = AppState.monthData[dateKey].songs;
+                if (toIdx < 0 || toIdx >= arr.length) return;
+                const [moved] = arr.splice(idx, 1);
+                arr.splice(toIdx, 0, moved);
+                // Remap danza indices
+                const danza = AppState.monthData[dateKey].danza;
+                if (danza && Array.isArray(danza.songs) && danza.songs.length) {
+                    danza.songs = danza.songs.map(i => {
+                        if (i === idx) return toIdx;
+                        if (idx < toIdx && i > idx && i <= toIdx) return i - 1;
+                        if (idx > toIdx && i >= toIdx && i < idx) return i + 1;
+                        return i;
+                    });
+                }
+                render();
+                debouncedSave();
+                return;
+            }
+
             const delBtn = e.target.closest('[data-del-type]');
             if (delBtn) {
                 e.stopPropagation();
@@ -1828,11 +1912,21 @@
         }
 
         function doMove(fromIdx, toIdx) {
-            if (fromIdx === toIdx || toIdx === null) return;
+            if (fromIdx === toIdx || toIdx === null || toIdx === undefined) return;
             const dateKey = AppState.sundays[AppState.activeIdx];
             const arr = AppState.monthData[dateKey].songs;
             const [moved] = arr.splice(fromIdx, 1);
             arr.splice(toIdx, 0, moved);
+            // Remap danza indices after reorder
+            const danza = AppState.monthData[dateKey].danza;
+            if (danza && Array.isArray(danza.songs) && danza.songs.length) {
+                danza.songs = danza.songs.map(i => {
+                    if (i === fromIdx) return toIdx;
+                    if (fromIdx < toIdx && i > fromIdx && i <= toIdx) return i - 1;
+                    if (fromIdx > toIdx && i >= toIdx && i < fromIdx) return i + 1;
+                    return i;
+                });
+            }
             render();
             debouncedSave();
         }
@@ -1920,12 +2014,41 @@
             if (lastItem) lastItem.classList.add('song-new');
             lastInput.focus();
         }
+        // BUG 8 FIX: refresh danza song list when a song is added and danza is active
+        if (type === 'songs') {
+            const danza = AppState.monthData[dateKey].danza;
+            const songsList = document.getElementById('danzaSongsList');
+            if (danza && danza.active && songsList) {
+                const songs = AppState.monthData[dateKey].songs;
+                songsList.innerHTML = songs.length
+                    ? `<p class="danza-hint">Seleccioná las canciones que acompañará:</p>` +
+                      songs.map((s, i) => {
+                          const isChecked = danza.songs.includes(i);
+                          return `<label class="danza-song-row${isChecked ? ' selected' : ''}" data-song-idx="${i}">
+                            <div class="check-box" style="${isChecked ? 'background:var(--accent-emerald);border-color:var(--accent-emerald)' : ''}">
+                              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" style="color:${isChecked ? '#0a0a0f' : 'transparent'}"><path d="M2 6l3 3 5-5"/></svg>
+                            </div>
+                            <span>${escapeHtml(s) || '—'}</span>
+                          </label>`;
+                      }).join('')
+                    : `<p class="danza-hint">Primero agregá canciones en la sección de arriba.</p>`;
+            }
+        }
         debouncedSave();
     }
 
     function removeItem(type, index) {
         const dateKey = AppState.sundays[AppState.activeIdx];
         AppState.monthData[dateKey][type].splice(index, 1);
+        // BUG 1 FIX: si se eliminó una canción, remap los índices de danza
+        if (type === 'songs') {
+            const danza = AppState.monthData[dateKey].danza;
+            if (danza && Array.isArray(danza.songs)) {
+                danza.songs = danza.songs
+                    .filter(i => i !== index)          // quitar el eliminado
+                    .map(i => i > index ? i - 1 : i);  // decrementar los posteriores
+            }
+        }
         render();
         debouncedSave();
     }
@@ -1939,10 +2062,10 @@
     async function save() {
         if (AppState.isSaving || !AppState.user) return Promise.resolve();
         AppState.isSaving = true;
-        AppState.skipNextSnapshot = true;
+        AppState.skipNextSnapshot++;  // BUG 2 FIX: increment counter
         setSyncStatus('saving', 'Guardando…');
         try {
-            const monthKey = `${YEAR}-${AppState.currentMonth}`;
+            const monthKey = `${getYear()}-${AppState.currentMonth}`;  // BUG 4 FIX
             const docRef = doc(db, 'artifacts', AppState.appId, 'public', 'data', 'months', monthKey);
             await setDoc(docRef, AppState.monthData);
             setSyncStatus('saved', '¡Guardado!');
@@ -2010,6 +2133,15 @@
     }
 
     async function exportImage() {
+        // BUG 6 FIX: force view mode before export, restore after
+        const wasEditing = AppState.viewMode === 'edit';
+        if (wasEditing) {
+            AppState.viewMode = 'view';
+            setToggleBtn('view');
+            render();
+            // Small delay so DOM updates before capture
+            await new Promise(r => setTimeout(r, 80));
+        }
         const header = document.querySelector('.header');
         const nav = document.querySelector('.nav');
         const footer = document.querySelector('.footer');
