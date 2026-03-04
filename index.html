@@ -1218,18 +1218,20 @@
         appId: typeof __app_id !== 'undefined' ? __app_id : 'agenda-musical-iebla-v21',
         user: null,
         musiciansConfig: [
-            { name: "Kevin",    roles: ["dirección", "voz apoyo", "guitarra", "bajo", "teclado", "batería", "sonido", "proyección"] },
+            { name: "Kevin",    roles: ["dirección", "voz apoyo", "guitarra", "bajo", "teclado", "batería", "sonido", "proyección (mañana)", "proyección (noche)"] },
             { name: "Norma",    roles: ["dirección", "voz apoyo"] },
             { name: "Nataly",   roles: ["dirección", "voz apoyo"] },
             { name: "Gabriel",  roles: ["batería"] },
-            { name: "Anderson", roles: ["batería", "proyección"] },
+            { name: "Anderson", roles: ["batería", "proyección (mañana)", "proyección (noche)"] },
             { name: "David",    roles: ["bajo"] },
             { name: "Lore",     roles: ["teclado", "bajo"] },
             { name: "Magali",   roles: ["teclado"] },
             { name: "Thiago",   roles: ["teclado"] },
-            { name: "Pame",     roles: ["proyección", "batería"] },
-            { name: "Nico",     roles: ["proyección"] },
-            { name: "Sonia",    roles: ["proyección"] },
+            { name: "Pame",     roles: ["proyección (mañana)", "proyección (noche)", "batería"] },
+            { name: "Nico",     roles: ["proyección (mañana)", "proyección (noche)"] },
+            { name: "Sonia",    roles: ["proyección (mañana)", "proyección (noche)"] },
+            { name: "Mar",      roles: ["proyección (mañana)", "proyección (noche)"] },
+            { name: "Vicky",    roles: ["proyección (mañana)", "proyección (noche)"] },
             { name: "Emma",     roles: ["guitarra", "bajo"] },
             { name: "Pedro",    roles: ["sonido"] },
             { name: "Cristian", roles: ["sonido"] },
@@ -1542,12 +1544,17 @@
                 ${songsHTML}
                 ${danzaBanner}
             </div>
-            <div class="card card-amber" style="margin-bottom:0">
+            ${data.notes ? `<div class="card card-amber" style="margin-bottom:0">
                 <div class="card-header">
                     <div class="card-title"><div class="dot dot-amber"></div><span>Notas</span></div>
                 </div>
                 ${notesHTML}
-            </div>
+            </div>` : `<div class="card card-amber no-export-if-empty" style="margin-bottom:0">
+                <div class="card-header">
+                    <div class="card-title"><div class="dot dot-amber"></div><span>Notas</span></div>
+                </div>
+                ${notesHTML}
+            </div>`}
         </div>`;
     }
 
@@ -2155,8 +2162,8 @@
         const nav = document.querySelector('.nav');
         const footer = document.querySelector('.footer');
         const els = [header, nav, footer];
-        const hide = () => { els.forEach(el => el.style.display = 'none'); document.querySelectorAll('.no-export').forEach(el => el.style.display = 'none'); };
-        const show = () => { els.forEach(el => el.style.display = ''); document.querySelectorAll('.no-export').forEach(el => el.style.display = ''); };
+        const hide = () => { els.forEach(el => el.style.display = 'none'); document.querySelectorAll('.no-export').forEach(el => el.style.display = 'none'); document.querySelectorAll('.no-export-if-empty').forEach(el => el.style.display = 'none'); };
+        const show = () => { els.forEach(el => el.style.display = ''); document.querySelectorAll('.no-export').forEach(el => el.style.display = ''); document.querySelectorAll('.no-export-if-empty').forEach(el => el.style.display = ''); };
 
         // Datos de la fecha actual
         const dateKey = AppState.sundays[AppState.activeIdx];
